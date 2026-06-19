@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /recreo-guest-form
 
 Sitemap: https://alaraiz.mx/sitemap.xml
