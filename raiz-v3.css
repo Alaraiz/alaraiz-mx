@@ -658,3 +658,23 @@ footer .wrap{position:relative;z-index:1;}
 .disc-inner .faq-aside .pos{position:static;}
 @media(max-width:820px){.disc-meta{display:none;}}
 @media(prefers-reduced-motion:reduce){.disc-body{transition:none;}}
+
+
+/* ---------- COMING SOON placeholders (experience + specialist) ---------- */
+.rec-soon{border-style:dashed;}
+.rec-media-soon{display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 30% 30%, color-mix(in oklch, var(--clay), transparent 80%), transparent 60%),
+    repeating-linear-gradient(135deg, var(--paper-3), var(--paper-3) 12px, var(--paper-2) 12px, var(--paper-2) 24px);}
+.soon-badge{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.18em;font-size:0.64rem;font-weight:700;
+  color:var(--accent-ink);background:var(--clay);padding:.55em 1.1em;border-radius:999px;z-index:2;}
+.rec-soon .rec-roman{color:var(--clay);opacity:.85;}
+.rec-foot-soon{margin-top:auto;display:flex;align-items:center;}
+.rec-soon .rec-cta{font-size:0.7rem;}
+
+.portrait-soon{display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in oklch, var(--clay), transparent 82%), transparent 62%),
+    repeating-linear-gradient(135deg, var(--paper-3), var(--paper-3) 12px, var(--paper-2) 12px, var(--paper-2) 24px);}
+.lead-soon{opacity:.96;}
+.lead-soon .lc-name{color:var(--ink-dim);}
