@@ -309,6 +309,13 @@ button{
 }
 button.primary{background:var(--clay);color:var(--tinta)}
 button.secondary{background:transparent;color:var(--crema);border:1px solid var(--line)}
+.col-chip{cursor:pointer;transition:border-color .2s,background .2s,transform .15s}
+.col-chip:hover{transform:translateY(-2px)}
+.col-chip.selected{background:rgba(201,130,79,.14);border-color:var(--clay);box-shadow:inset 0 0 0 1px var(--clay)}
+.col-chip:focus-visible{outline:2px solid var(--clay);outline-offset:3px}
+.send-note{margin-top:16px;font-size:14px;line-height:1.5;color:var(--muted);text-align:right}
+.send-note strong{color:var(--clay);font-weight:600}
+.print-echo{display:none}
 .footer{
   margin-top:30px;
   text-align:center;
@@ -324,12 +331,22 @@ button.secondary{background:transparent;color:var(--crema);border:1px solid var(
   .grid,.grid.three,.range,.colecciones,.voz-row{grid-template-columns:1fr}
   .voz-cell.si{border-right:none; border-bottom:1px solid var(--line)}
   .actions{position:static;justify-content:stretch}
+  .send-note{text-align:left}
   button{flex:1}
 }
 @media print{
   body{background:white; color:#14110D}
   .page{width:100%;margin:0}
   .actions{display:none}
+  .send-note{display:none}
+  textarea{white-space:pre-wrap;resize:none}
+  input,textarea,select{background:transparent!important;color:#14110D!important;border-color:#c9c2b4!important}
+  .print-echo{display:block!important;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.45;color:#14110D;padding:6px 0;border-bottom:1px solid #c9c2b4}
+  .print-hide{display:none!important}
+  .col-chip{background:transparent!important;color:#14110D!important;border:1px solid #c9c2b4!important}
+  .col-chip span{color:#4a4436!important}
+  .col-chip strong{color:#14110D!important}
+  .col-chip.selected{background:#f2e6db!important;box-shadow:inset 0 0 0 2px #a55f34!important;border-color:#a55f34!important}
 }
 </style>
 </head>
@@ -508,9 +525,13 @@ button.secondary{background:transparent;color:var(--crema);border:1px solid var(
       <div class="section-head"><span class="section-num">10</span><h2>¿A qué colección pertenece?</h2></div>
       <p class="intro">Ubica tu idea dentro de una de las colecciones de re·creo — o dinos si abre una nueva línea.</p>
       <div class="colecciones">
-        <div class="col-chip crudo"><span class="dot"></span><strong>Crudo</strong><span>Edgy · real. La ciudad como cuerpo que no pide permiso.</span></div>
-        <div class="col-chip mesa"><span class="dot"></span><strong>Poner la Mesa</strong><span>Craft · origen · local. Del mercado y el productor al plato.</span></div>
-        <div class="col-chip bajo"><span class="dot"></span><strong>Bajotierra</strong><span>Ciencia · política · real. La ciudad que se hunde, centímetro a centímetro.</span></div>
+        <div class="col-chip crudo" data-col="Crudo" role="button" tabindex="0"><span class="dot"></span><strong>Crudo</strong><span>Edgy · real. La ciudad como cuerpo que no pide permiso.</span></div>
+        <div class="col-chip mesa" data-col="Poner la Mesa" role="button" tabindex="0"><span class="dot"></span><strong>Poner la Mesa</strong><span>Craft · origen · local. Del mercado y el productor al plato.</span></div>
+        <div class="col-chip bajo" data-col="Bajotierra" role="button" tabindex="0"><span class="dot"></span><strong>Bajotierra</strong><span>Ciencia · política · real. La ciudad que se hunde, centímetro a centímetro.</span></div>
+      </div>
+      <div class="field" style="margin-top:18px">
+        <label>¿Abre una nueva línea? ¿Por qué encaja ahí?</label>
+        <textarea class="short" placeholder="Si no encaja en ninguna colección, cuéntanos qué línea nueva propone."></textarea>
       </div>
     </section>
 
@@ -543,20 +564,127 @@ button.secondary{background:transparent;color:var(--crema);border:1px solid var(
 
     <div class="actions">
       <button class="secondary" type="button" onclick="clearForm()">Borrar campos</button>
-      <button class="primary" type="button" onclick="window.print()">Imprimir o guardar como PDF</button>
+      <button class="secondary" type="button" onclick="window.print()">Guardar como PDF</button>
+      <button class="primary" type="button" onclick="enviarPorCorreo()">Enviar a re·creo →</button>
     </div>
+    <p class="send-note">Al enviar se abrirá tu correo con las respuestas listas para <strong>recreobyraiz@pm.me</strong>. ¿Prefieres hacerlo tú? Guarda el PDF y envíalo a esa misma dirección.</p>
   </form>
 
   <div class="footer">RAÍZ · re·creo — <strong>Crear de nuevo</strong>. Tu pasión es el punto de partida; el diseño cuidadoso la vuelve algo que otros pueden vivir de verdad.</div>
 </div>
 
 <script>
+const RECREO_MAIL = "recreobyraiz@pm.me";
+
+document.querySelectorAll(".col-chip").forEach(chip=>{
+  const pick = ()=>{
+    const on = chip.classList.contains("selected");
+    document.querySelectorAll(".col-chip").forEach(c=>c.classList.remove("selected"));
+    if(!on) chip.classList.add("selected");
+  };
+  chip.addEventListener("click", pick);
+  chip.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(); } });
+});
+
+function recogerRespuestas(){
+  const out = [];
+  document.querySelectorAll("form .section").forEach(sec=>{
+    const num = (sec.querySelector(".section-num")||{}).textContent || "";
+    const tit = (sec.querySelector("h2")||{}).textContent || "";
+    const bloque = [];
+    sec.querySelectorAll(".field").forEach(f=>{
+      const lab = (f.querySelector("label")||{}).textContent || "";
+      const el = f.querySelector("input, textarea, select");
+      if(!el) return;
+      const val = (el.value||"").trim();
+      if(val) bloque.push("  " + lab.trim() + ": " + val);
+    });
+    const chip = sec.querySelector(".col-chip.selected");
+    if(chip) bloque.push("  Colecci\u00f3n elegida: " + chip.dataset.col);
+    if(bloque.length){
+      out.push((num.trim()==="\u00b7" ? "" : num.trim()+". ") + tit.trim());
+      out.push(bloque.join("\n"));
+      out.push("");
+    }
+  });
+  return out.join("\n");
+}
+
+function nombreYTitulo(){
+  const inputs = document.querySelectorAll("form .section input[type=text]");
+  const nombre = inputs[0] && inputs[0].value.trim();
+  const titulo = inputs[1] && inputs[1].value.trim();
+  return { nombre: nombre || "", titulo: titulo || "" };
+}
+
+function enviarPorCorreo(){
+  const cuerpo = recogerRespuestas();
+  if(!cuerpo.trim()){
+    alert("A\u00fan no hay respuestas que enviar. Completa al menos un campo.");
+    return;
+  }
+  const { nombre, titulo } = nombreYTitulo();
+  const asunto = "Nueva idea de experiencia" + (titulo ? " \u2014 " + titulo : "") + (nombre ? " (" + nombre + ")" : "");
+  const texto = "Nueva propuesta de experiencia para re\u00b7creo\n\n" + cuerpo;
+  const href = "mailto:" + RECREO_MAIL + "?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(texto);
+
+  if(href.length > 1900 && navigator.clipboard){
+    navigator.clipboard.writeText(texto).then(()=>{
+      alert("Tus respuestas se copiaron al portapapeles.\n\nSe abrir\u00e1 tu correo hacia " + RECREO_MAIL + ". Si el mensaje llega incompleto, solo p\u00e9galo (Ctrl/Cmd + V).");
+      window.location.href = href;
+    }).catch(()=>{ window.location.href = href; });
+  } else {
+    window.location.href = href;
+  }
+}
+
+/* --- textareas grow with their content so nothing is hidden on screen or in PDF --- */
+function autoGrow(el){
+  if(!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+function growAll(){ document.querySelectorAll("form textarea").forEach(autoGrow); }
+document.querySelectorAll("form textarea").forEach(el=>{
+  el.addEventListener("input", ()=>autoGrow(el));
+});
+window.addEventListener("load", growAll);
+
+/* --- single-line inputs & selects can clip a long value when printed.
+       Mirror their text into a print-only echo. --- */
+function syncPrintEchoes(){
+  document.querySelectorAll("form .field").forEach(f=>{
+    const el = f.querySelector("input[type=text], input[type=number], select, textarea");
+    if(!el) return;
+    let val;
+    if(el.tagName === "SELECT"){
+      val = el.selectedIndex > 0 ? el.options[el.selectedIndex].text : "";
+    } else {
+      val = (el.value || "").trim();
+    }
+    let echo = f.querySelector(".print-echo");
+    if(!echo){
+      echo = document.createElement("div");
+      echo.className = "print-echo";
+      el.after(echo);
+    }
+    echo.textContent = val || "—";
+    el.classList.add("print-hide");
+  });
+}
+window.addEventListener("beforeprint", ()=>{ growAll(); syncPrintEchoes(); });
+window.addEventListener("afterprint", ()=>{
+  document.querySelectorAll(".print-hide").forEach(el=>el.classList.remove("print-hide"));
+});
+
 function clearForm(){
   if(!confirm("¿Borrar todos los campos de este formulario?")) return;
   document.querySelectorAll("input, textarea, select").forEach(el=>{
     if(el.type==="checkbox" || el.type==="radio") el.checked=false;
     else el.value="";
   });
+  document.querySelectorAll(".col-chip").forEach(c=>c.classList.remove("selected"));
+  growAll();
 }
 </script>
 
