@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminEmail } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const email = await adminEmail();
-  if (!email) {
+  const user = await requireRole(["admin", "editor"]);
+  if (!user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
@@ -43,8 +43,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const email = await adminEmail();
-  if (!email) {
+  const user = await requireRole(["admin", "editor"]);
+  if (!user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 

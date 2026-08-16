@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = await createToken(user.id, user.email);
+    const token = await createToken(user.id, user.email, user.role);
     setSessionCookie(token);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, role: user.role });
   } catch {
     return NextResponse.json(
       { error: "Error al iniciar sesión." },

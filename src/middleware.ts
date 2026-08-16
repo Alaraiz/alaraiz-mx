@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
-/**
- * Middleware to protect admin routes.
- * Checks for the session cookie. Full verification happens server-side,
- * but this prevents unauthenticated users from even loading admin pages.
- */
-export function middleware(request: NextRequest) {
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "dev-secret-replace-me"
+);
+const COOKIE_NAME = "raiz_session";
+
+/** Routes restricted to admin role only (editors get 403) */
+const ADMIN_ONLY_API = ["/api/admin/customers", "/api/admin/crm-events", "/api/admin/reservations", "/api/admin/users"];
+const ADMIN_ONLY_PAGES = ["/admin/crm", "/admin/payments"];
+
+async function getRoleFromCookie(request: NextRequest): Promise<string | null> {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    return (payload as { role?: string }).role || "admin";
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow login page, public API routes, and auth routes
@@ -19,12 +35,27 @@ export function middleware(request: NextRequest) {
 
   // Protect /admin and /api/admin routes
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    const session = request.cookies.get("raiz_session")?.value;
-    if (!session) {
+    const role = await getRoleFromCookie(request);
+
+    if (!role) {
       if (pathname.startsWith("/api/")) {
         return NextResponse.json({ error: "No autorizado." }, { status: 401 });
       }
       return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+
+    // Check admin-only API routes
+    if (role !== "admin") {
+      const isAdminOnlyApi = ADMIN_ONLY_API.some((prefix) => pathname.startsWith(prefix));
+      if (isAdminOnlyApi) {
+        return NextResponse.json({ error: "Acceso restringido a administradores." }, { status: 403 });
+      }
+
+      // Check admin-only pages (rare — editors hitting CRM/payments directly)
+      const isAdminOnlyPage = ADMIN_ONLY_PAGES.some((prefix) => pathname.startsWith(prefix));
+      if (isAdminOnlyPage) {
+        return NextResponse.redirect(new URL("/admin", request.url));
+      }
     }
   }
 

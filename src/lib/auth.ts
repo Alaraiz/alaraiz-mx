@@ -9,11 +9,13 @@ const SECRET = new TextEncoder().encode(
 const COOKIE_NAME = "raiz_session";
 const EXPIRY = "7d";
 
+export type TokenPayload = { sub: string; email: string; role: string };
+
 /**
- * Create a signed JWT for a user.
+ * Create a signed JWT for a user (includes role).
  */
-export async function createToken(userId: string, email: string) {
-  return new SignJWT({ sub: userId, email })
+export async function createToken(userId: string, email: string, role: string) {
+  return new SignJWT({ sub: userId, email, role })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(EXPIRY)
     .setIssuedAt()
@@ -23,13 +25,23 @@ export async function createToken(userId: string, email: string) {
 /**
  * Verify a JWT and return the payload, or null.
  */
-export async function verifyToken(token: string) {
+export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return payload as { sub: string; email: string };
+    return payload as unknown as TokenPayload;
   } catch {
     return null;
   }
+}
+
+/**
+ * Get the full user info from the session cookie.
+ */
+export async function getUserFromToken(): Promise<TokenPayload | null> {
+  const cookieStore = cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+  return verifyToken(token);
 }
 
 /**
@@ -37,11 +49,21 @@ export async function verifyToken(token: string) {
  * Returns null if not authenticated.
  */
 export async function adminEmail(): Promise<string | null> {
-  const cookieStore = cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-  const payload = await verifyToken(token);
+  const payload = await getUserFromToken();
   return payload?.email || null;
+}
+
+/**
+ * Require that the logged-in user has one of the allowed roles.
+ * Returns the token payload if authorized, or null if not.
+ */
+export async function requireRole(
+  allowed: string[]
+): Promise<TokenPayload | null> {
+  const payload = await getUserFromToken();
+  if (!payload) return null;
+  if (!allowed.includes(payload.role)) return null;
+  return payload;
 }
 
 /**
@@ -68,10 +90,11 @@ export function clearSessionCookie() {
 
 /**
  * Authenticate a user by email and password.
+ * Returns {id, email, role} or null.
  */
 export async function authenticate(email: string, password: string) {
   const result = await db.execute({
-    sql: "SELECT id, email, password_hash FROM users WHERE email = ?",
+    sql: "SELECT id, email, password_hash, role FROM users WHERE email = ?",
     args: [email],
   });
 
@@ -81,7 +104,11 @@ export async function authenticate(email: string, password: string) {
   const valid = await bcrypt.compare(password, String(user.password_hash));
   if (!valid) return null;
 
-  return { id: String(user.id), email: String(user.email) };
+  return {
+    id: String(user.id),
+    email: String(user.email),
+    role: String(user.role),
+  };
 }
 
 /**

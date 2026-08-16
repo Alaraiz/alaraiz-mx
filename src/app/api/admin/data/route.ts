@@ -1,22 +1,35 @@
 import { NextResponse } from "next/server";
-import { adminEmail } from "@/lib/auth";
+import { getUserFromToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET() {
-  const email = await adminEmail();
-  if (!email) {
+  const user = await getUserFromToken();
+  if (!user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
   try {
-    const [experiences, dates, customers, reservations, events, folders, facilitators] =
-      await Promise.all([
-        db.execute("SELECT * FROM experiences ORDER BY created_at DESC"),
-        db.execute(
-          `SELECT a.*, e.title FROM availability a
-           JOIN experiences e ON e.id = a.experience_id
-           ORDER BY a.date ASC`
-        ),
+    const isAdmin = user.role === "admin";
+
+    // Base queries available to all roles
+    const [experiences, dates, facilitators] = await Promise.all([
+      db.execute("SELECT * FROM experiences ORDER BY created_at DESC"),
+      db.execute(
+        `SELECT a.*, e.title FROM availability a
+         JOIN experiences e ON e.id = a.experience_id
+         ORDER BY a.date ASC`
+      ),
+      db.execute("SELECT * FROM facilitators ORDER BY created_at DESC"),
+    ]);
+
+    // Admin-only data
+    let customers = { rows: [] as unknown[] };
+    let reservations = { rows: [] as unknown[] };
+    let events = { rows: [] as unknown[] };
+    let folders = { rows: [] as unknown[] };
+
+    if (isAdmin) {
+      [customers, reservations, events, folders] = await Promise.all([
         db.execute("SELECT * FROM customers ORDER BY updated_at DESC"),
         db.execute(
           `SELECT r.*, c.name, e.title FROM reservations r
@@ -26,8 +39,8 @@ export async function GET() {
         ),
         db.execute("SELECT * FROM crm_events ORDER BY created_at DESC"),
         db.execute("SELECT * FROM folders ORDER BY name ASC"),
-        db.execute("SELECT * FROM facilitators ORDER BY created_at DESC"),
       ]);
+    }
 
     return NextResponse.json({
       experiences: experiences.rows,

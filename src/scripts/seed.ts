@@ -32,6 +32,23 @@ async function seed() {
     console.log("👤 Admin user already exists.");
   }
 
+  // Create editor user if it doesn't exist
+  const editorExists = await db.execute({
+    sql: "SELECT id FROM users WHERE email = ?",
+    args: ["editor@alaraiz.mx"],
+  });
+
+  if (editorExists.rows.length === 0) {
+    const editorHash = await hashPassword("cambiame123");
+    await db.execute({
+      sql: "INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)",
+      args: ["editor@alaraiz.mx", editorHash, "Editor Raíz", "editor"],
+    });
+    console.log("👤 Editor user created: editor@alaraiz.mx / cambiame123");
+  } else {
+    console.log("👤 Editor user already exists.");
+  }
+
   console.log("🌱 Seed complete!");
 }
 

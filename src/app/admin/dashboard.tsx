@@ -16,7 +16,7 @@ type Data = {
 type Notice = { message: string; tone: "success" | "error" };
 type Notify = (message: string, tone?: Notice["tone"]) => void;
 
-const tabs = [
+const allTabs = [
   ["overview", "Resumen"],
   ["experiences", "Experiencias"],
   ["facilitators", "Facilitadores"],
@@ -26,8 +26,11 @@ const tabs = [
   ["settings", "Configuración"],
 ];
 
+const adminOnlyTabs = new Set(["crm", "payments"]);
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
+  const [role, setRole] = useState<string>("admin");
   const [data, setData] = useState<Data>({
     experiences: [],
     dates: [],
@@ -39,6 +42,18 @@ export default function AdminDashboard() {
   });
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const tabs = useMemo(
+    () => allTabs.filter((t) => role === "admin" || !adminOnlyTabs.has(t[0])),
+    [role]
+  );
+
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((r) => r.json())
+      .then((d) => { if (d.role) setRole(d.role); })
+      .catch(() => {});
+  }, []);
 
   const refresh = async () => {
     setLoading(true);
@@ -97,13 +112,13 @@ export default function AdminDashboard() {
         </a>
         <p className="admin-side-label">Gestión</p>
         <nav>
-          {tabs.map((item, i) => (
+          {tabs.map((item) => (
             <button
               className={tab === item[0] ? "active" : ""}
               onClick={() => setTab(item[0])}
               key={item[0]}
             >
-              <span>{["◌", "✦", "☉", "▦", "♧", "↗", "⚙"][i]}</span>
+              <span>{({ overview: "◌", experiences: "✦", facilitators: "☉", calendar: "▦", crm: "♧", payments: "↗", settings: "⚙" } as Record<string, string>)[item[0]] || "·"}</span>
               {item[1]}
             </button>
           ))}
