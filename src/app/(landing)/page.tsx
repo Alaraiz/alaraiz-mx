@@ -3,6 +3,90 @@
 import { useEffect, useRef, useState } from "react";
 import ProximasFechas from "./proximas-fechas";
 
+/* ── Types for CMS data ── */
+interface Experience {
+  id: string;
+  slug: string;
+  title: string;
+  tag: string | null;
+  description: string | null;
+  duration: string | null;
+  price: number | null;
+  capacity: number;
+  cover_image_url: string | null;
+  collection: string | null;
+  pace: string | null;
+  zone: string | null;
+  language: string | null;
+  includes: string | null;
+  facilitator_id: string | null;
+  facilitator_name: string | null;
+  facilitator_role: string | null;
+  facilitator_photo_url: string | null;
+}
+
+interface Facilitator {
+  id: string;
+  name: string;
+  role: string | null;
+  bio: string | null;
+  photo_url: string | null;
+  collection: string | null;
+  reclaims: string | null;
+}
+
+/** Derive color theme from collection name */
+function collectionColor(collection: string | null): string {
+  if (!collection) return "clay";
+  const lower = collection.toLowerCase();
+  if (lower.includes("mesa") || lower.includes("poner")) return "moss";
+  if (lower.includes("bajotierra") || lower.includes("agua")) return "slate";
+  return "clay";
+}
+
+/** Get initials for the avatar */
+function getInitials(name: string | null): string {
+  if (!name) return "??";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+/** Map pace string to dot count (1-3) */
+function paceDots(pace: string | null): number {
+  if (!pace) return 1;
+  const lower = pace.toLowerCase();
+  if (lower.includes("tranquilo") || lower.includes("easy") || lower.includes("lento")) return 1;
+  if (lower.includes("pausa") || lower.includes("moderate") || lower.includes("medio")) return 2;
+  return 3;
+}
+
+/** Pace label */
+function paceLabel(pace: string | null): { es: string; en: string } {
+  if (!pace) return { es: "Tranquilo", en: "Easy" };
+  const lower = pace.toLowerCase();
+  if (lower.includes("tranquilo") || lower.includes("easy")) return { es: "Tranquilo", en: "Easy" };
+  if (lower.includes("pausa") || lower.includes("moderate")) return { es: "Con pausas", en: "With breaks" };
+  return { es: pace, en: pace };
+}
+
+/** Convert number to roman numeral */
+function toRoman(num: number): string {
+  const map: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let result = "";
+  for (const [value, numeral] of map) {
+    while (num >= value) {
+      result += numeral;
+      num -= value;
+    }
+  }
+  return result;
+}
+
 /**
  * Landing page — full conversion from index.html.
  * Hero with hover-reveal preserved, followed by all original sections.
@@ -10,6 +94,8 @@ import ProximasFechas from "./proximas-fechas";
 export default function HomePage() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [experiences, setExperiences] = useState<Experience[] | null>(null);
+  const [facilitators, setFacilitators] = useState<Facilitator[] | null>(null);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -28,6 +114,20 @@ export default function HomePage() {
       wrap.removeEventListener("mouseleave", stop);
       wrap.removeEventListener("touchstart", play);
     };
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/public/experiences")
+      .then((r) => r.json())
+      .then((data) => setExperiences(data.experiences ?? []))
+      .catch(() => setExperiences([]));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/public/facilitators")
+      .then((r) => r.json())
+      .then((data) => setFacilitators(data.facilitators ?? []))
+      .catch(() => setFacilitators([]));
   }, []);
 
   return (
@@ -101,72 +201,86 @@ export default function HomePage() {
           </div>
 
           <div className="rec-rail" id="recRail">
-          {/* Card I – Cocinando Resistencia */}
-          <article className="rec-card" data-c="moss">
-            <div className="rec-media">
-              <img src="/assets/exp-mesa.jpg" alt="Mesa con jícaras, molcajetes y masa — cocina de raíz" />
-              <span className="rec-roman">II</span>
-              <span className="rec-col"><span className="pill"></span> Poner la Mesa · Colección II</span>
-            </div>
-            <div className="rec-body">
-              <span className="rec-tags">Craft · Comunidad · Resistencia</span>
-              <h3 className="rec-name">Cocinando Resistencia</h3>
-              <p className="rec-product"><span className="lng-es">La mesa como territorio político. Una ruta a pie por panadería cooperativa, kombucha de barrio, pulque centenario y cocina queer de resistencia.</span><span className="lng-en">The table as political territory. A walking route through a cooperative bakery, neighborhood kombucha, century-old pulque and queer kitchens of resistance.</span></p>
-              <p className="rec-pull"><span className="lng-es">«Quién cocina, quién resiste y quién se queda con el valor.»</span><span className="lng-en">&ldquo;Who cooks, who resists, and who keeps the value.&rdquo;</span></p>
-              <div className="rec-spec">
-                <div className="rs"><span className="rsk"><span className="lng-es">Duración</span><span className="lng-en">Length</span></span><span className="rsv"><span className="lng-es">5 horas · ruta a pie</span><span className="lng-en">5 hours · on foot</span></span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Ritmo</span><span className="lng-en">Pace</span></span><span className="rsv meter"><span className="dots"><i className="on"></i><i className="on"></i><i></i></span><span className="ml"><span className="lng-es">Con pausas</span><span className="lng-en">With breaks</span></span></span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Zona</span><span className="lng-en">Area</span></span><span className="rsv"><span className="lng-es">San Rafael → Centro</span><span className="lng-en">San Rafael → Centro</span></span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Idioma</span><span className="lng-en">Language</span></span><span className="rsv">ES / EN</span></div>
-              </div>
-              <div className="rec-foot">
-                <div className="rec-lead"><span className="lead-avatar">AR</span><span className="lead-meta"><span className="lbl"><span className="lng-es">Anfitriona</span><span className="lng-en">Host</span></span><span className="nm">Ana Cristina Rubio</span></span></div>
-                <a href="#rsvp" className="rec-cta"><span className="lng-es">Solicitar →</span><span className="lng-en">Apply →</span></a>
-              </div>
-            </div>
-          </article>
-
-          {/* Card II – ¡Aguas! */}
-          <article className="rec-card" data-c="slate">
-            <div className="rec-media">
-              <img src="/assets/exp-aguas.jpg" alt="Tuberías de agua y vegetación — la infraestructura hídrica de la ciudad" />
-              <span className="rec-roman">III</span>
-              <span className="rec-col"><span className="pill"></span> Bajotierra · Colección III</span>
-            </div>
-            <div className="rec-body">
-              <span className="rec-tags">Agua · Historia · Arte</span>
-              <h3 className="rec-name">¡Aguas!</h3>
-              <p className="rec-product"><span className="lng-es">La ciudad que se quedó sin su lago. Del antiguo Texcoco a la crisis del agua, entre los murales de Diego Rivera en el Cárcamo de Dolores y un picnic en Chapultepec.</span><span className="lng-en">The city that lost its lake. From ancient Texcoco to the water crisis, between Diego Rivera&apos;s murals at the Cárcamo de Dolores and a picnic in Chapultepec.</span></p>
-              <p className="rec-pull"><span className="lng-es">«Una ciudad que pasó de manto acuífero a traer su agua desde lejos —¿a qué precio?»</span><span className="lng-en">&ldquo;A city that went from aquifer to hauling its water from afar —at what price?&rdquo;</span></p>
-              <div className="rec-spec">
-                <div className="rs"><span className="rsk"><span className="lng-es">Duración</span><span className="lng-en">Length</span></span><span className="rsv"><span className="lng-es">5 horas · con picnic</span><span className="lng-en">5 hours · with picnic</span></span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Ritmo</span><span className="lng-en">Pace</span></span><span className="rsv meter"><span className="dots"><i className="on"></i><i></i><i></i></span><span className="ml"><span className="lng-es">Tranquilo</span><span className="lng-en">Easy</span></span></span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Lugar</span><span className="lng-en">Place</span></span><span className="rsv">Chapultepec</span></div>
-                <div className="rs"><span className="rsk"><span className="lng-es">Idioma</span><span className="lng-en">Language</span></span><span className="rsv">ES / EN</span></div>
-              </div>
-              <div className="rec-foot">
-                <div className="rec-lead"><span className="lead-avatar">SM</span><span className="lead-meta"><span className="lbl"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></span><span className="nm">Sergio Mancilla Cuevas</span></span></div>
-                <a href="#rsvp" className="rec-cta"><span className="lng-es">Solicitar →</span><span className="lng-en">Apply →</span></a>
-              </div>
-            </div>
-          </article>
-
-          {/* Card III – Próximamente */}
-          <article className="rec-card rec-soon" data-c="clay">
-            <div className="rec-media rec-media-soon">
-              <span className="rec-roman">IV</span>
-              <span className="soon-badge"><span className="lng-es">Próximamente</span><span className="lng-en">Coming soon</span></span>
-              <span className="rec-col"><span className="pill"></span> <span className="lng-es">Nueva colección · 2026</span><span className="lng-en">New collection · 2026</span></span>
-            </div>
-            <div className="rec-body">
-              <span className="rec-tags"><span className="lng-es">En el laboratorio</span><span className="lng-en">In the lab</span></span>
-              <h3 className="rec-name"><span className="lng-es">Muy pronto</span><span className="lng-en">Coming soon</span></h3>
-              <p className="rec-product"><span className="lng-es">Estamos destilando una nueva experiencia. Déjanos tu correo y serás de los primeros en conocerla cuando abra.</span><span className="lng-en">We&apos;re distilling a new experience. Leave us your email and be among the first to know when it opens.</span></p>
-              <div className="rec-foot rec-foot-soon">
-                <a href="#rsvp" className="rec-cta"><span className="lng-es">Avísame →</span><span className="lng-en">Notify me →</span></a>
-              </div>
-            </div>
-          </article>
+          {/* Dynamic experience cards from CMS */}
+          {experiences === null ? (
+            /* Loading skeleton */
+            <>
+              {[1, 2, 3].map((i) => (
+                <article key={i} className="rec-card rec-soon" data-c="clay">
+                  <div className="rec-media rec-media-soon">
+                    <span className="soon-badge">Cargando…</span>
+                  </div>
+                  <div className="rec-body">
+                    <span className="rec-tags">&nbsp;</span>
+                    <h3 className="rec-name">&nbsp;</h3>
+                  </div>
+                </article>
+              ))}
+            </>
+          ) : (
+            <>
+              {experiences.map((exp, idx) => {
+                const color = collectionColor(exp.collection);
+                const dots = paceDots(exp.pace);
+                const pace = paceLabel(exp.pace);
+                const initials = getInitials(exp.facilitator_name);
+                return (
+                  <article key={exp.id} className="rec-card" data-c={color}>
+                    <div className="rec-media">
+                      {exp.cover_image_url && (
+                        <img src={exp.cover_image_url} alt={exp.title} />
+                      )}
+                      <span className="rec-roman">{toRoman(idx + 1)}</span>
+                      {exp.collection && (
+                        <span className="rec-col"><span className="pill"></span> {exp.collection}</span>
+                      )}
+                    </div>
+                    <div className="rec-body">
+                      {exp.tag && <span className="rec-tags">{exp.tag}</span>}
+                      <h3 className="rec-name">{exp.title}</h3>
+                      {exp.description && (
+                        <p className="rec-product">{exp.description}</p>
+                      )}
+                      <div className="rec-spec">
+                        {exp.duration && (
+                          <div className="rs"><span className="rsk"><span className="lng-es">Duración</span><span className="lng-en">Length</span></span><span className="rsv">{exp.duration}</span></div>
+                        )}
+                        <div className="rs"><span className="rsk"><span className="lng-es">Ritmo</span><span className="lng-en">Pace</span></span><span className="rsv meter"><span className="dots">{[1, 2, 3].map((d) => <i key={d} className={d <= dots ? "on" : ""}></i>)}</span><span className="ml"><span className="lng-es">{pace.es}</span><span className="lng-en">{pace.en}</span></span></span></div>
+                        {exp.zone && (
+                          <div className="rs"><span className="rsk"><span className="lng-es">Zona</span><span className="lng-en">Area</span></span><span className="rsv">{exp.zone}</span></div>
+                        )}
+                        {exp.language && (
+                          <div className="rs"><span className="rsk"><span className="lng-es">Idioma</span><span className="lng-en">Language</span></span><span className="rsv">{exp.language}</span></div>
+                        )}
+                      </div>
+                      <div className="rec-foot">
+                        <div className="rec-lead"><span className="lead-avatar">{initials}</span><span className="lead-meta"><span className="lbl"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></span><span className="nm">{exp.facilitator_name || "Por anunciar"}</span></span></div>
+                        <a href={`/reservar/${exp.slug}`} className="rec-cta"><span className="lng-es">Solicitar →</span><span className="lng-en">Apply →</span></a>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+              {/* Placeholder card if fewer than 3 */}
+              {experiences.length < 3 && (
+                <article className="rec-card rec-soon" data-c="clay">
+                  <div className="rec-media rec-media-soon">
+                    <span className="rec-roman">{toRoman(experiences.length + 1)}</span>
+                    <span className="soon-badge"><span className="lng-es">Próximamente</span><span className="lng-en">Coming soon</span></span>
+                    <span className="rec-col"><span className="pill"></span> <span className="lng-es">Nueva colección · 2026</span><span className="lng-en">New collection · 2026</span></span>
+                  </div>
+                  <div className="rec-body">
+                    <span className="rec-tags"><span className="lng-es">En el laboratorio</span><span className="lng-en">In the lab</span></span>
+                    <h3 className="rec-name"><span className="lng-es">Muy pronto</span><span className="lng-en">Coming soon</span></h3>
+                    <p className="rec-product"><span className="lng-es">Estamos destilando una nueva experiencia. Déjanos tu correo y serás de los primeros en conocerla cuando abra.</span><span className="lng-en">We&apos;re distilling a new experience. Leave us your email and be among the first to know when it opens.</span></p>
+                    <div className="rec-foot rec-foot-soon">
+                      <a href="#rsvp" className="rec-cta"><span className="lng-es">Avísame →</span><span className="lng-en">Notify me →</span></a>
+                    </div>
+                  </div>
+                </article>
+              )}
+            </>
+          )}
           </div>
         </div>
       </section>
@@ -184,38 +298,63 @@ export default function HomePage() {
           <p className="lede" style={{ maxWidth: "62ch", marginBottom: "clamp(34px,5vh,52px)" }}><span className="lng-es">Cada experiencia la lleva quien la conoce desde adentro: su oficio es su credencial, y la ciudad que te muestran es, antes que nada, la suya.</span><span className="lng-en">Each experience is led by someone who knows it from the inside: their craft is their credential, and the city they show you is, above all, their own.</span></p>
 
           <div className="leads-grid">
-            <article className="lead-card" data-c="moss">
-              <div className="frame portrait"><img src="/assets/team-cristina.jpg" alt="Ana Cristina Rubio" /></div>
-              <div className="lc-body">
-                <div className="lc-collection"><span className="pill" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--moss)", display: "inline-block" }}></span> Poner la Mesa · <span className="lng-es">Colección II</span><span className="lng-en">Collection II</span></div>
-                <h3 className="lc-name">Ana Cristina Rubio</h3>
-                <div className="lc-role"><span className="lng-es">Gastrónoma · Investigadora</span><span className="lng-en">Gastronome · Researcher</span></div>
-                <p className="lc-bio"><span className="lng-es">Investiga la mesa como territorio político: panaderías cooperativas, fermentos de barrio, pulque centenario y cocina que también es resistencia.</span><span className="lng-en">She studies the table as political territory: cooperative bakeries, neighborhood ferments, century-old pulque and kitchens that are also resistance.</span></p>
-                <div className="lc-reclaims"><div className="rk"><span className="lng-es">Lo que reivindica</span><span className="lng-en">What she reclaims</span></div><div className="rv"><span className="lng-es">«Comer es un acto político y comunitario.»</span><span className="lng-en">&ldquo;Eating is a political, communal act.&rdquo;</span></div></div>
-              </div>
-            </article>
-
-            <article className="lead-card" data-c="slate">
-              <div className="frame portrait"><img src="/assets/team-david-alt.jpg" alt="Sergio Mancilla Cuevas" /></div>
-              <div className="lc-body">
-                <div className="lc-collection"><span className="pill" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--slate)", display: "inline-block" }}></span> Bajotierra · <span className="lng-es">Colección III</span><span className="lng-en">Collection III</span></div>
-                <h3 className="lc-name">Sergio Mancilla Cuevas</h3>
-                <div className="lc-role"><span className="lng-es">Productor · Fixer · Consultor DDHH</span><span className="lng-en">Producer · Fixer · Human-rights consultant</span></div>
-                <p className="lc-bio"><span className="lng-es">Ha sido los ojos de corresponsales y documentalistas en la ciudad. Narra cómo la CDMX pasó de gran manto acuífero a megaurbe que trae su agua de lejos.</span><span className="lng-en">He has been the eyes of correspondents and documentarians in the city. He tells how Mexico City went from a great aquifer to a megacity that hauls its water from afar.</span></p>
-                <div className="lc-reclaims"><div className="rk"><span className="lng-es">Lo que reivindica</span><span className="lng-en">What he reclaims</span></div><div className="rv"><span className="lng-es">«Entender el agua es entender la ciudad.»</span><span className="lng-en">&ldquo;To understand the water is to understand the city.&rdquo;</span></div></div>
-              </div>
-            </article>
-
-            <article className="lead-card lead-soon" data-c="clay">
-              <div className="frame portrait portrait-soon"><span className="soon-badge"><span className="lng-es">Próximamente</span><span className="lng-en">Coming soon</span></span></div>
-              <div className="lc-body">
-                <div className="lc-collection"><span className="pill" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--clay)", display: "inline-block" }}></span> <span className="lng-es">Nueva colección · 2026</span><span className="lng-en">New collection · 2026</span></div>
-                <h3 className="lc-name"><span className="lng-es">Anfitrión por anunciar</span><span className="lng-en">Host to be announced</span></h3>
-                <div className="lc-role"><span className="lng-es">Una nueva línea en preparación</span><span className="lng-en">A new line in the making</span></div>
-                <p className="lc-bio"><span className="lng-es">Estamos sumando a la persona indicada para llevar nuestra próxima colección. Como siempre: alguien que vive lo que narra.</span><span className="lng-en">We&apos;re bringing in the right person to lead our next collection. As always: someone who lives what they tell.</span></p>
-                <div className="lc-reclaims"><div className="rk"><span className="lng-es">Muy pronto</span><span className="lng-en">Coming soon</span></div><div className="rv"><span className="lng-es">«La ciudad tiene más de una historia por contar.»</span><span className="lng-en">&ldquo;The city has more than one story left to tell.&rdquo;</span></div></div>
-              </div>
-            </article>
+            {facilitators === null ? (
+              /* Loading */
+              <>
+                {[1, 2, 3].map((i) => (
+                  <article key={i} className="lead-card lead-soon" data-c="clay">
+                    <div className="frame portrait portrait-soon"><span className="soon-badge">Cargando…</span></div>
+                    <div className="lc-body">
+                      <h3 className="lc-name">&nbsp;</h3>
+                    </div>
+                  </article>
+                ))}
+              </>
+            ) : (
+              <>
+                {facilitators.map((fac) => {
+                  const color = collectionColor(fac.collection);
+                  return (
+                    <article key={fac.id} className="lead-card" data-c={color}>
+                      <div className="frame portrait">
+                        {fac.photo_url ? (
+                          <img src={fac.photo_url} alt={fac.name} />
+                        ) : (
+                          <span className="soon-badge">{getInitials(fac.name)}</span>
+                        )}
+                      </div>
+                      <div className="lc-body">
+                        {fac.collection && (
+                          <div className="lc-collection"><span className="pill" style={{ width: 8, height: 8, borderRadius: "50%", background: `var(--${color})`, display: "inline-block" }}></span> {fac.collection}</div>
+                        )}
+                        <h3 className="lc-name">{fac.name}</h3>
+                        {fac.role && <div className="lc-role">{fac.role}</div>}
+                        {fac.bio && <p className="lc-bio">{fac.bio}</p>}
+                        {fac.reclaims && (
+                          <div className="lc-reclaims">
+                            <div className="rk"><span className="lng-es">Lo que reivindica</span><span className="lng-en">What they reclaim</span></div>
+                            <div className="rv">{fac.reclaims}</div>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+                {/* Placeholder if fewer than 3 */}
+                {facilitators.length < 3 && (
+                  <article className="lead-card lead-soon" data-c="clay">
+                    <div className="frame portrait portrait-soon"><span className="soon-badge"><span className="lng-es">Próximamente</span><span className="lng-en">Coming soon</span></span></div>
+                    <div className="lc-body">
+                      <div className="lc-collection"><span className="pill" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--clay)", display: "inline-block" }}></span> <span className="lng-es">Nueva colección · 2026</span><span className="lng-en">New collection · 2026</span></div>
+                      <h3 className="lc-name"><span className="lng-es">Anfitrión por anunciar</span><span className="lng-en">Host to be announced</span></h3>
+                      <div className="lc-role"><span className="lng-es">Una nueva línea en preparación</span><span className="lng-en">A new line in the making</span></div>
+                      <p className="lc-bio"><span className="lng-es">Estamos sumando a la persona indicada para llevar nuestra próxima colección. Como siempre: alguien que vive lo que narra.</span><span className="lng-en">We&apos;re bringing in the right person to lead our next collection. As always: someone who lives what they tell.</span></p>
+                      <div className="lc-reclaims"><div className="rk"><span className="lng-es">Muy pronto</span><span className="lng-en">Coming soon</span></div><div className="rv"><span className="lng-es">«La ciudad tiene más de una historia por contar.»</span><span className="lng-en">&ldquo;The city has more than one story left to tell.&rdquo;</span></div></div>
+                    </div>
+                  </article>
+                )}
+              </>
+            )}
           </div>
         </div>
       </section>
