@@ -1,0 +1,22 @@
+/* Global reset — the landing CSS is loaded via its own route layout */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  line-height: 1.62;
+  height: 100dvh;
+  overflow: hidden;
+}
