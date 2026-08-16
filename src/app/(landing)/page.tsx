@@ -386,8 +386,9 @@ export default function HomePage() {
                   <label><span className="lng-es">¿Qué experiencia te llama?</span><span className="lng-en">Which experience calls you?</span></label>
                   <div className="chips" id="chips">
                     <span className="chip" data-v="Próximamente" role="button" tabIndex={0} aria-pressed="false"><span className="lng-es">Avísame de la nueva</span><span className="lng-en">Notify me · new line</span></span>
-                    <span className="chip" data-v="Cocinando Resistencia" role="button" tabIndex={0} aria-pressed="false">Cocinando Resistencia</span>
-                    <span className="chip" data-v="¡Aguas!" role="button" tabIndex={0} aria-pressed="false">¡Aguas!</span>
+                    {experiences && experiences.map((exp) => (
+                      <span key={exp.id} className="chip" data-v={exp.title} role="button" tabIndex={0} aria-pressed="false">{exp.title}</span>
+                    ))}
                     <span className="chip" data-v="Sorpréndeme" role="button" tabIndex={0} aria-pressed="false"><span className="lng-es">Sorpréndeme</span><span className="lng-en">Surprise me</span></span>
                   </div>
                 </div>
