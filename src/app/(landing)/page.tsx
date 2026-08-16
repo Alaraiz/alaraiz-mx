@@ -1,7 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ProximasFechas from "./proximas-fechas";
+
+/* ── Scroll-reveal hook (IntersectionObserver) ── */
+function useReveal() {
+  const init = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) {
+      document.querySelectorAll(".reveal-on-scroll").forEach((el) => {
+        el.classList.add("revealed");
+      });
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+    );
+    document.querySelectorAll(".reveal-on-scroll").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const cleanup = init();
+    return cleanup;
+  }, [init]);
+}
 
 /* ── Types for CMS data ── */
 interface Experience {
@@ -96,6 +128,11 @@ export default function HomePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [experiences, setExperiences] = useState<Experience[] | null>(null);
   const [facilitators, setFacilitators] = useState<Facilitator[] | null>(null);
+  const [heroMounted, setHeroMounted] = useState(false);
+
+  useReveal();
+
+  useEffect(() => { setHeroMounted(true); }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -155,20 +192,20 @@ export default function HomePage() {
             <source src="/assets/alaraiz-reveal.mp4" type="video/mp4" />
           </video>
           {/* Hero text overlay inside the reveal container */}
-          <div className="reveal-overlay">
-            <span className="hero-eyebrow">
+          <div className={`reveal-overlay${heroMounted ? " hero-entered" : ""}`}>
+            <span className="hero-eyebrow hero-stagger s1">
               <span className="lng-es">Ciudad de México · Experiencias de un día</span>
               <span className="lng-en">Mexico City · One-day experiences</span>
             </span>
-            <h1>
+            <h1 className="hero-stagger s2">
               <span className="lng-es">La ciudad<br /><em>debajo</em> de la ciudad.</span>
               <span className="lng-en">The city<br /><em>beneath</em> the city.</span>
             </h1>
-            <p className="hero-dek">
+            <p className="hero-dek hero-stagger s3">
               <span className="lng-es">Existe una versión de la Ciudad de México que no aparece en ninguna plataforma. Raíz te lleva ahí —con quienes la habitan, no quienes la venden.</span>
               <span className="lng-en">There&apos;s a version of Mexico City that lives on no platform. Raíz takes you there —with the people who inhabit it, not the ones who sell it.</span>
             </p>
-            <div className="hero-actions">
+            <div className="hero-actions hero-stagger s4">
               <a href="#recreo" className="btn btn-solid">
                 <span className="lng-es">Ver las experiencias</span>
                 <span className="lng-en">See the experiences</span>
@@ -192,7 +229,7 @@ export default function HomePage() {
       {/* ============ RECREO / EXPERIENCES ============ */}
       <section id="recreo" className="recreo section-screen rule-top">
         <div className="wrap">
-          <div className="masthead">
+          <div className="masthead reveal-on-scroll">
             <div className="mh-l">
               <span className="kicker"><span className="lng-es">Recreo · Experiencias de un día</span><span className="lng-en">Recreo · One-day experiences</span></span>
               <h2><span className="lng-es">Tres <em>experiencias</em>,<br />cada una un mundo.</span><span className="lng-en">Three <em>experiences</em>,<br />each its own world.</span></h2>
@@ -288,14 +325,14 @@ export default function HomePage() {
       {/* ============ ESPECIALISTAS ============ */}
       <section id="especialistas" className="section-screen rule-top">
         <div className="wrap">
-          <div className="masthead">
+          <div className="masthead reveal-on-scroll">
             <div className="mh-l">
               <span className="kicker"><span className="lng-es">Quién te recibe</span><span className="lng-en">Who receives you</span></span>
               <h2><span className="lng-es">Especialistas que <em>viven</em> lo que narran.</span><span className="lng-en">Specialists who <em>live</em> what they tell.</span></h2>
             </div>
             <span className="folio"><span className="lng-es">Anfitriones de línea</span><span className="lng-en">Line hosts</span></span>
           </div>
-          <p className="lede" style={{ maxWidth: "62ch", marginBottom: "clamp(34px,5vh,52px)" }}><span className="lng-es">Cada experiencia la lleva quien la conoce desde adentro: su oficio es su credencial, y la ciudad que te muestran es, antes que nada, la suya.</span><span className="lng-en">Each experience is led by someone who knows it from the inside: their craft is their credential, and the city they show you is, above all, their own.</span></p>
+          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(34px,5vh,52px)" }}><span className="lng-es">Cada experiencia la lleva quien la conoce desde adentro: su oficio es su credencial, y la ciudad que te muestran es, antes que nada, la suya.</span><span className="lng-en">Each experience is led by someone who knows it from the inside: their craft is their credential, and the city they show you is, above all, their own.</span></p>
 
           <div className="leads-grid">
             {facilitators === null ? (
@@ -363,7 +400,7 @@ export default function HomePage() {
       <section id="rsvp" className="section-screen rule-top">
         <div className="wrap">
           <div className="rsvp-grid">
-            <div className="rsvp-left">
+            <div className="rsvp-left reveal-on-scroll">
               <span className="kicker"><span className="lng-es">El lanzamiento público</span><span className="lng-en">The public launch</span></span>
               <h2><span className="lng-es">Tres líneas.<br />Un <em>lanzamiento</em>.</span><span className="lng-en">Three lines.<br />One <em>launch</em>.</span></h2>
               <p className="lede"><span className="lng-es">Después de seis meses de incubación y cuatro intensas semanas de laboratorio con el equipo, las tres experiencias se abren al público por primera vez. Solicita tu lugar; te diremos honestamente si es para ti.</span><span className="lng-en">After six months of incubation and four intense weeks of lab with the team, the three experiences open to the public for the first time. Request your spot; we&apos;ll honestly tell you if it&apos;s for you.</span></p>
@@ -374,7 +411,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="form-card">
+            <div className="form-card reveal-on-scroll">
               <form id="rsvpForm" noValidate>
                 <h3><span className="lng-es">Solicita tu lugar</span><span className="lng-en">Request your spot</span></h3>
                 <p className="fsub"><span className="lng-es">Una solicitud, no una compra. Te respondemos personalmente.</span><span className="lng-en">A request, not a purchase. We reply personally.</span></p>
@@ -427,7 +464,7 @@ export default function HomePage() {
       {/* ============ DESCUBRE / DISCLOSURES ============ */}
       <section id="descubre" className="section-screen rule-top">
         <div className="wrap">
-          <div className="masthead">
+          <div className="masthead reveal-on-scroll">
             <div className="mh-l">
               <span className="kicker"><span className="lng-es">Descubre más</span><span className="lng-en">Discover more</span></span>
               <h2><span className="lng-es">Todo lo demás,<br />a un <em>clic</em>.</span><span className="lng-en">Everything else,<br />one <em>click</em> away.</span></h2>
@@ -594,38 +631,53 @@ const FAQ_DATA = [
 ];
 
 function FaqPanel() {
-  const [active, setActive] = useState<string | null>(null);
-  const selected = FAQ_DATA.find((item) => item.n === active);
+  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+
+  const toggle = (n: string) => {
+    setOpenItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  };
 
   return (
-    <div className="faq-split">
-      <div className="faq-questions">
+    <div className="faq-grid">
+      <aside className="faq-aside">
+        <span className="kicker">FAQ</span>
+        <h3 className="faq-title">
+          <span className="lng-es">Preguntas honestas,<br />respuestas <em>honestas</em>.</span>
+          <span className="lng-en">Honest questions,<br />honest <em>answers</em>.</span>
+        </h3>
+        <p className="faq-intro">
+          <span className="lng-es">Lo que necesitas saber antes de reservar.</span>
+          <span className="lng-en">What you need to know before you book.</span>
+        </p>
+      </aside>
+      <div className="faq-list">
         {FAQ_DATA.map((item) => (
-          <button
-            key={item.n}
-            className={`faq-q-btn${active === item.n ? " active" : ""}`}
-            onClick={() => setActive(active === item.n ? null : item.n)}
-          >
-            <span className="qn">{item.n}</span>
-            <span className="qtxt">
-              <span className="lng-es">{item.q[0]}</span>
-              <span className="lng-en">{item.q[1]}</span>
-            </span>
-          </button>
+          <div key={item.n} className={`faq-item${openItems.has(item.n) ? " open" : ""}`}>
+            <button
+              className="faq-q"
+              onClick={() => toggle(item.n)}
+              aria-expanded={openItems.has(item.n)}
+            >
+              <span className="qn">{item.n}</span>
+              <span className="qtxt">
+                <span className="lng-es">{item.q[0]}</span>
+                <span className="lng-en">{item.q[1]}</span>
+              </span>
+              <span className="qx" aria-hidden="true"></span>
+            </button>
+            <div className="faq-a">
+              <div className="inner">
+                <span className="lng-es">{item.a[0]}</span>
+                <span className="lng-en">{item.a[1]}</span>
+              </div>
+            </div>
+          </div>
         ))}
-      </div>
-      <div className="faq-answer">
-        {selected ? (
-          <div className="faq-answer-content">
-            <span className="faq-answer-num">{selected.n}</span>
-            <p><span className="lng-es">{selected.a[0]}</span><span className="lng-en">{selected.a[1]}</span></p>
-          </div>
-        ) : (
-          <div className="faq-answer-empty">
-            <span className="lng-es">Elige una pregunta</span>
-            <span className="lng-en">Choose a question</span>
-          </div>
-        )}
       </div>
     </div>
   );
