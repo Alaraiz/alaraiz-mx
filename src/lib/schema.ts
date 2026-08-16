@@ -30,6 +30,11 @@ export async function migrate() {
       cover_image_url TEXT,
       is_published INTEGER NOT NULL DEFAULT 0,
       collection TEXT,
+      pace TEXT,
+      zone TEXT,
+      language TEXT DEFAULT 'ES / EN',
+      includes TEXT,
+      facilitator_id TEXT REFERENCES facilitators(id),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,

@@ -3,7 +3,7 @@ import { FormEvent, useState } from "react";
 
 type Row = Record<string, string | number | null>;
 type Props = {
-  data: { experiences: Row[] };
+  data: { experiences: Row[]; facilitators: Row[] };
   refresh: () => void;
   notify: (message: string) => void;
 };
@@ -53,6 +53,12 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
           capacity,
           price,
           isPublished: values.isPublished === "on",
+          collection: values.collection || null,
+          facilitatorId: values.facilitatorId || null,
+          pace: values.pace || null,
+          zone: values.zone || null,
+          language: values.language || null,
+          includes: values.includes || null,
         }),
       });
 
@@ -168,7 +174,43 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   onChange={(e) => setImageUrl(e.target.value)}
                 />
               </label>
+              <label>
+                Colección
+                <select name="collection" defaultValue={String(active.collection || "")}>
+                  <option value="">— Sin colección —</option>
+                  <option value="Colección II">Colección II</option>
+                  <option value="Colección III">Colección III</option>
+                  <option value="Próximamente">Próximamente</option>
+                </select>
+              </label>
+              <label>
+                Anfitrión
+                <select name="facilitatorId" defaultValue={String(active.facilitator_id || "")}>
+                  <option value="">— Sin anfitrión —</option>
+                  {data.facilitators.map((f) => (
+                    <option key={String(f.id)} value={String(f.id)}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Ritmo
+                <input name="pace" defaultValue={String(active.pace || "")} placeholder="Ej. Con pausas, Tranquilo" />
+              </label>
+              <label>
+                Zona
+                <input name="zone" defaultValue={String(active.zone || "")} placeholder="Ej. San Rafael → Centro" />
+              </label>
+              <label>
+                Idioma
+                <input name="language" defaultValue={String(active.language || "ES / EN")} />
+              </label>
             </div>
+            <label>
+              Incluye
+              <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Ej. Picnic incluido · Caminata en bosque" />
+            </label>
             <label>
               Descripción
               <textarea name="description" rows={5} defaultValue={String(active.description || "")} />

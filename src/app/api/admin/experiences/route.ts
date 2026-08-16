@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, tag, description, duration, price, capacity, coverImageUrl, isPublished } = body;
+    const { title, tag, description, duration, price, capacity, coverImageUrl, isPublished, collection, facilitatorId, pace, zone, language, includes } = body;
 
     if (!title) {
       return NextResponse.json({ error: "El nombre es obligatorio." }, { status: 400 });
@@ -22,9 +22,14 @@ export async function POST(request: NextRequest) {
       .replace(/^-|-$/g, "");
 
     const result = await db.execute({
-      sql: `INSERT INTO experiences (title, slug, tag, description, duration, price, capacity, cover_image_url, is_published)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      args: [title, slug, tag || null, description || null, duration || null, price ?? null, capacity || 12, coverImageUrl || null, isPublished ? 1 : 0],
+      sql: `INSERT INTO experiences (title, slug, tag, description, duration, price, capacity, cover_image_url, is_published, collection, facilitator_id, pace, zone, language, includes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      args: [
+        title, slug, tag || null, description || null, duration || null,
+        price ?? null, capacity || 12, coverImageUrl || null, isPublished ? 1 : 0,
+        collection || null, facilitatorId || null, pace || null, zone || null,
+        language || "ES / EN", includes || null,
+      ],
     });
 
     return NextResponse.json({ ok: true, id: result.rows[0].id });
