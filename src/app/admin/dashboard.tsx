@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import ExperienceManager from "./experience-manager";
 import FacilitatorManager from "./facilitator-manager";
 import CrmManager from "./crm-manager";
+import UserManager from "./user-manager";
 
 type Row = Record<string, string | number | null>;
 type Data = {
@@ -162,7 +163,7 @@ export default function AdminDashboard() {
               <CrmManager data={data} refresh={refresh} notify={notify} />
             )}
             {tab === "payments" && <Payments data={data} />}
-            {tab === "settings" && <Settings notify={notify} />}
+            {tab === "settings" && <Settings notify={notify} role={role} />}
           </>
         )}
       </section>
@@ -271,32 +272,30 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
 
   return (
     <>
-      <div className="admin-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div>
           <p className="admin-kicker">Calendario de salidas</p>
-          <h3 style={{ marginTop: "0.3rem" }}>
+          <p className="admin-muted">
             {sortedDates.length} fecha{sortedDates.length !== 1 ? "s" : ""} programada{sortedDates.length !== 1 ? "s" : ""}
-          </h3>
+          </p>
         </div>
         <button
-          className="admin-btn"
+          className={showForm ? "admin-btn" : "admin-primary admin-small"}
           onClick={() => setShowForm(!showForm)}
-          style={{ padding: "0.5rem 1rem", cursor: "pointer" }}
         >
-          {showForm ? "Cancelar" : "+ Nueva fecha"}
+          {showForm ? "Cancelar" : "＋ Nueva fecha"}
         </button>
       </div>
 
       {/* Create availability form */}
       {showForm && (
-        <form className="admin-panel admin-form" onSubmit={createSlot} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        <form className="admin-panel admin-inline-form" onSubmit={createSlot}>
           <label style={{ gridColumn: "1 / -1" }}>
-            <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Experiencia</span>
+            Experiencia
             <select
               value={formData.experienceId}
               onChange={(e) => setFormData({ ...formData, experienceId: e.target.value })}
               required
-              style={{ width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
             >
               <option value="">Seleccionar...</option>
               {data.experiences.map((exp) => (
@@ -307,42 +306,38 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
             </select>
           </label>
           <label>
-            <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Fecha</span>
+            Fecha
             <input
               type="date"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               required
-              style={{ width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
             />
           </label>
           <label>
-            <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Hora</span>
+            Hora
             <input
               type="time"
               value={formData.time}
               onChange={(e) => setFormData({ ...formData, time: e.target.value })}
               required
-              style={{ width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
             />
           </label>
           <label>
-            <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Capacidad</span>
+            Capacidad
             <input
               type="number"
               min={1}
               value={formData.capacity}
               onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-              style={{ width: "100%", padding: "0.5rem", marginTop: "0.25rem" }}
             />
           </label>
           <button
             type="submit"
-            className="admin-btn"
+            className="admin-primary admin-small"
             disabled={saving}
-            style={{ gridColumn: "2", padding: "0.5rem 1rem", cursor: saving ? "wait" : "pointer" }}
           >
-            {saving ? "Guardando..." : "Crear fecha"}
+            {saving ? "Guardando…" : "Crear fecha"}
           </button>
         </form>
       )}
@@ -476,7 +471,9 @@ function Payments({ data }: { data: Data }) {
   );
 }
 
-function Settings({ notify }: { notify: (s: string) => void }) {
+function Settings({ notify, role }: { notify: (s: string) => void; role: string }) {
+  const [subTab, setSubTab] = useState<"security" | "users">("security");
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.currentTarget).entries());
@@ -490,18 +487,62 @@ function Settings({ notify }: { notify: (s: string) => void }) {
   }
 
   return (
-    <form className="admin-form admin-panel" onSubmit={submit}>
-      <p className="admin-kicker">Seguridad</p>
-      <h3>Cambiar contraseña</h3>
-      <label>
-        Contraseña actual
-        <input name="currentPassword" type="password" required />
-      </label>
-      <label>
-        Nueva contraseña
-        <input name="newPassword" type="password" minLength={8} required />
-      </label>
-      <button className="admin-primary">Actualizar contraseña</button>
-    </form>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* Sub-tab navigation */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+        <button
+          className="admin-pill"
+          onClick={() => setSubTab("security")}
+          style={{
+            cursor: "pointer",
+            background: subTab === "security" ? "var(--admin-accent)" : "transparent",
+            color: subTab === "security" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+            border: "1px solid var(--admin-border)",
+            borderRadius: 20,
+            padding: "0.3rem 0.7rem",
+            fontSize: "0.75rem",
+          }}
+        >
+          Seguridad
+        </button>
+        {role === "admin" && (
+          <button
+            className="admin-pill"
+            onClick={() => setSubTab("users")}
+            style={{
+              cursor: "pointer",
+              background: subTab === "users" ? "var(--admin-accent)" : "transparent",
+              color: subTab === "users" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+              border: "1px solid var(--admin-border)",
+              borderRadius: 20,
+              padding: "0.3rem 0.7rem",
+              fontSize: "0.75rem",
+            }}
+          >
+            Usuarios
+          </button>
+        )}
+      </div>
+
+      {/* Security sub-tab */}
+      {subTab === "security" && (
+        <form className="admin-form admin-panel" onSubmit={submit}>
+          <p className="admin-kicker">Seguridad</p>
+          <h3>Cambiar contraseña</h3>
+          <label>
+            Contraseña actual
+            <input name="currentPassword" type="password" required />
+          </label>
+          <label>
+            Nueva contraseña
+            <input name="newPassword" type="password" minLength={8} required />
+          </label>
+          <button className="admin-primary">Actualizar contraseña</button>
+        </form>
+      )}
+
+      {/* Users sub-tab (admin only) */}
+      {subTab === "users" && role === "admin" && <UserManager notify={notify} />}
+    </div>
   );
 }

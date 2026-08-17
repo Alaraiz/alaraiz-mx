@@ -56,7 +56,6 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   const selected =
     data.customers.find((c) => text(c.id) === selectedId) || null;
 
-  // Customer events for the selected customer
   const customerEvents = useMemo(
     () =>
       selected
@@ -120,7 +119,8 @@ export default function CrmManager({ data, refresh, notify }: Props) {
     <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 1fr" : "1fr", gap: "1rem" }}>
       {/* Left: List */}
       <div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+        {/* Stage filter pills */}
+        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
           {stages.map((item) => (
             <button
               key={item[0]}
@@ -141,58 +141,73 @@ export default function CrmManager({ data, refresh, notify }: Props) {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+        {/* Search + Create button */}
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center" }}>
           <input
             placeholder="Buscar por nombre, correo o teléfono…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="admin-search-input"
             style={{
               flex: 1,
               background: "var(--admin-bg)",
               border: "1px solid var(--admin-border)",
-              borderRadius: "8px",
-              padding: "0.5rem 0.7rem",
+              borderRadius: 8,
+              padding: "0.55rem 0.75rem",
               color: "var(--admin-text)",
               font: "inherit",
               fontSize: "0.85rem",
+              outline: "none",
             }}
           />
           <button
-            className="admin-btn"
+            className={showCreate ? "admin-btn" : "admin-primary admin-small"}
             onClick={() => setShowCreate(!showCreate)}
-            style={{ padding: "0.5rem 0.8rem", cursor: "pointer", fontSize: "0.8rem" }}
           >
-            + Nuevo
+            {showCreate ? "Cancelar" : "＋ Nuevo"}
           </button>
         </div>
 
         {/* Create form */}
         {showCreate && (
           <form
-            className="admin-panel"
+            className="admin-panel admin-inline-form"
             onSubmit={createCustomer}
-            style={{ marginBottom: "0.75rem", padding: "0.8rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}
+            style={{ marginBottom: "0.75rem", padding: "1rem" }}
           >
-            <input name="name" placeholder="Nombre *" required style={inputStyle} />
-            <input name="email" placeholder="Email *" type="email" required style={inputStyle} />
-            <input name="phone" placeholder="Teléfono" style={inputStyle} />
-            <select name="stage" style={inputStyle} defaultValue="nuevo">
-              {stages.filter((s) => s[0] !== "todos").map((s) => (
-                <option key={s[0]} value={s[0]}>{s[1]}</option>
-              ))}
-            </select>
+            <label>
+              Nombre
+              <input name="name" placeholder="Nombre *" required />
+            </label>
+            <label>
+              Email
+              <input name="email" placeholder="correo@ejemplo.com" type="email" required />
+            </label>
+            <label>
+              Teléfono
+              <input name="phone" placeholder="Opcional" />
+            </label>
+            <label>
+              Etapa
+              <select name="stage" defaultValue="nuevo">
+                {stages.filter((s) => s[0] !== "todos").map((s) => (
+                  <option key={s[0]} value={s[0]}>{s[1]}</option>
+                ))}
+              </select>
+            </label>
             <button
               type="submit"
-              className="admin-btn"
+              className="admin-primary admin-small"
               disabled={saving}
-              style={{ gridColumn: "1 / -1", padding: "0.5rem", cursor: saving ? "wait" : "pointer" }}
+              style={{ gridColumn: "1 / -1", justifySelf: "end" }}
             >
-              {saving ? "Guardando..." : "Crear cliente"}
+              {saving ? "Guardando…" : "Crear cliente"}
             </button>
           </form>
         )}
 
-        <div className="admin-panel" style={{ maxHeight: 480, overflowY: "auto" }}>
+        {/* Customer list */}
+        <div className="admin-panel" style={{ maxHeight: 480, overflowY: "auto", padding: "1rem" }}>
           <p className="admin-muted" style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
             {filtered.length} contacto{filtered.length !== 1 ? "s" : ""}
           </p>
@@ -206,13 +221,12 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                 padding: "0.5rem 0.4rem",
                 borderBottom: "1px solid var(--admin-border)",
                 cursor: "pointer",
-                background: text(selected?.id) === text(customer.id) ? "var(--admin-border)" : "transparent",
-                borderRadius: 4,
+                background: text(selected?.id) === text(customer.id) ? "var(--admin-surface-2)" : "transparent",
+                borderRadius: 6,
               }}
               onClick={() => setSelectedId(text(customer.id))}
             >
               <span
-                className="admin-avatar"
                 style={{
                   width: 28, height: 28, borderRadius: "50%",
                   background: "var(--admin-accent)", color: "var(--admin-accent-ink)",
@@ -222,7 +236,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
               >
                 {text(customer.name).slice(0, 1).toUpperCase()}
               </span>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <strong style={{ fontSize: "0.85rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {text(customer.name)}
                 </strong>
@@ -241,7 +255,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       {/* Right: Detail panel */}
       {selected && (
         <div>
-          <div className="admin-panel" style={{ marginBottom: "0.75rem" }}>
+          <div className="admin-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: "1.1rem" }}>{text(selected.name)}</h3>
@@ -251,12 +265,13 @@ export default function CrmManager({ data, refresh, notify }: Props) {
               </div>
               <span
                 style={{
-                  fontSize: "0.7rem",
-                  padding: "0.2rem 0.6rem",
+                  fontSize: "0.65rem",
+                  padding: "0.15rem 0.55rem",
                   borderRadius: 12,
                   background: "var(--admin-accent)",
                   color: "var(--admin-accent-ink)",
                   textTransform: "uppercase",
+                  fontWeight: 600,
                 }}
               >
                 {stageLabel(selected.stage)}
@@ -274,7 +289,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
 
           {/* Reservations */}
           {customerReservations.length > 0 && (
-            <div className="admin-panel" style={{ marginBottom: "0.75rem" }}>
+            <div className="admin-panel">
               <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Reservas ({customerReservations.length})</p>
               {customerReservations.map((r) => (
                 <div key={text(r.id)} style={{ fontSize: "0.8rem", padding: "0.3rem 0", borderBottom: "1px solid var(--admin-border)", display: "flex", gap: "0.5rem" }}>
@@ -289,7 +304,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
           )}
 
           {/* Events/Notes */}
-          <div className="admin-panel" style={{ marginBottom: "0.75rem" }}>
+          <div className="admin-panel">
             <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Notas y seguimiento</p>
             {customerEvents.length === 0 && (
               <p className="admin-muted" style={{ fontSize: "0.8rem" }}>Sin notas aún.</p>
@@ -304,10 +319,20 @@ export default function CrmManager({ data, refresh, notify }: Props) {
           </div>
 
           {/* Add note form */}
-          <form className="admin-panel" onSubmit={addNote} style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            <input name="title" placeholder="Título de la nota *" required style={inputStyle} />
-            <textarea name="body" placeholder="Detalle (opcional)" rows={2} style={{ ...inputStyle, resize: "vertical" }} />
-            <button type="submit" className="admin-btn" style={{ alignSelf: "flex-end", padding: "0.4rem 0.8rem", cursor: "pointer", fontSize: "0.8rem" }}>
+          <form className="admin-panel admin-inline-form" onSubmit={addNote} style={{ padding: "1rem" }}>
+            <label style={{ gridColumn: "1 / -1" }}>
+              Título
+              <input name="title" placeholder="Título de la nota *" required />
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>
+              Detalle
+              <textarea name="body" placeholder="Opcional" rows={2} style={{ resize: "vertical" }} />
+            </label>
+            <button
+              type="submit"
+              className="admin-primary admin-small"
+              style={{ justifySelf: "end", gridColumn: "1 / -1" }}
+            >
               Agregar nota
             </button>
           </form>
@@ -316,15 +341,3 @@ export default function CrmManager({ data, refresh, notify }: Props) {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  background: "var(--admin-bg)",
-  border: "1px solid var(--admin-border)",
-  borderRadius: 6,
-  padding: "0.5rem 0.7rem",
-  color: "var(--admin-text)",
-  font: "inherit",
-  fontSize: "0.85rem",
-  width: "100%",
-  boxSizing: "border-box",
-};

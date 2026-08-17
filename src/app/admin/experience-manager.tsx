@@ -13,6 +13,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
   const [creating, setCreating] = useState(false);
   const [imageUrl, setImageUrl] = useState("/assets/exp-mesa.jpg");
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const active = editing || (creating ? {} : null);
 
@@ -57,6 +58,28 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
     setCreating(false);
   }
 
+  async function handleDelete() {
+    if (!editing) return;
+    const title = String(editing.title || "esta experiencia");
+    if (!window.confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/admin/experiences/" + editing.id, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({ error: "Error" }));
+        throw new Error(d.error || "Error al eliminar.");
+      }
+      notify("Experiencia eliminada.");
+      closeModal();
+      await refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error al eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = Object.fromEntries(
@@ -96,7 +119,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
         const data = await response.json().catch(() => ({ error: "Error desconocido." }));
         notify(data.error || "No se pudo guardar.");
       }
-    } catch (err) {
+    } catch {
       notify("Error de red al guardar la experiencia.");
     }
   }
@@ -194,18 +217,18 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               </label>
               <label>
                 Imagen de portada
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflow: "hidden" }}>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    style={{ flex: 1 }}
+                    style={{ minWidth: 0, maxWidth: "100%" }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleImageUpload(file);
                     }}
                   />
-                  {uploading && <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Subiendo…</span>}
+                  {uploading && <span className="admin-muted" style={{ fontSize: "0.75rem", flexShrink: 0 }}>Subiendo…</span>}
                 </div>
                 {imageUrl && (
                   <img
@@ -272,6 +295,17 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               Publicar en la landing
             </label>
             <div className="admin-form-actions">
+              {editing && (
+                <button
+                  type="button"
+                  className="admin-btn-danger"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? "Eliminando…" : "Eliminar experiencia"}
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
               <button type="button" onClick={closeModal}>
                 Cancelar
               </button>
