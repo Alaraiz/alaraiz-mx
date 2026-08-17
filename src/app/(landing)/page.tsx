@@ -588,28 +588,30 @@ export default function HomePage() {
             </details>
           </div>
         </div>
+
+        {/* Footer inline within descubre section */}
+        <footer>
+          <div className="wrap">
+            <p className="foot-manifesto"><span className="lng-es">Esto no es un tour.<br />Es una <em>introducción</em>.</span><span className="lng-en">This isn&apos;t a tour.<br />It&apos;s an <em>introduction</em>.</span></p>
+            <div className="foot-bottom">
+              <div className="foot-cols">
+                <div className="col"><span className="mono"><span className="lng-es">Navega</span><span className="lng-en">Navigate</span></span><a href="#recreo">Recreo</a><a href="#especialistas"><span className="lng-es">Acompañantes</span><span className="lng-en">Hosts</span></a><a href="#rsvp"><span className="lng-es">Reserva</span><span className="lng-en">Book</span></a></div>
+                <div className="col"><span className="mono">Esporas</span><a href="/detente/02">Détente · Nº 02</a><a href="/detente/01">Détente · Nº 01</a></div>
+                <div className="col"><span className="mono"><span className="lng-es">Contacto</span><span className="lng-en">Contact</span></span><a href="mailto:recreobyraiz@pm.me">recreobyraiz@pm.me</a><a href="mailto:alaraiz@pm.me">alaraiz@pm.me</a><a href="https://alaraiz.mx">alaraiz.mx</a></div>
+                <div className="col"><span className="mono"><span className="lng-es">Síguenos</span><span className="lng-en">Follow</span></span><a href="https://instagram.com/a.la.ra.iz" target="_blank" rel="noopener noreferrer">@a.la.ra.iz</a><a href="https://instagram.com/recreobyraiz" target="_blank" rel="noopener noreferrer">@recreobyraiz</a><a href="https://instagram.com/detentebyraiz" target="_blank" rel="noopener noreferrer">@detentebyraiz</a></div>
+              </div>
+              <a href="#top" className="brand">Raíz<span className="dot"></span></a>
+            </div>
+            <div className="colophon">
+              <span>© Raíz · CDMX · 2026</span>
+              <span><span className="lng-es">Contada por quienes la viven</span><span className="lng-en">Told by the people who live it</span></span>
+              <span>Space Grotesk · Hanken Grotesk</span>
+            </div>
+          </div>
+        </footer>
       </section>
 
-      {/* ============ FOOTER (inside last snap section) ============ */}
-      <footer>
-        <div className="wrap">
-          <p className="foot-manifesto"><span className="lng-es">Esto no es un tour.<br />Es una <em>introducción</em>.</span><span className="lng-en">This isn&apos;t a tour.<br />It&apos;s an <em>introduction</em>.</span></p>
-          <div className="foot-bottom">
-            <div className="foot-cols">
-              <div className="col"><span className="mono"><span className="lng-es">Navega</span><span className="lng-en">Navigate</span></span><a href="#recreo">Recreo</a><a href="#especialistas"><span className="lng-es">Acompañantes</span><span className="lng-en">Hosts</span></a><a href="#rsvp"><span className="lng-es">Reserva</span><span className="lng-en">Book</span></a></div>
-              <div className="col"><span className="mono">Esporas</span><a href="/detente/02">Détente · Nº 02</a><a href="/detente/01">Détente · Nº 01</a></div>
-              <div className="col"><span className="mono"><span className="lng-es">Contacto</span><span className="lng-en">Contact</span></span><a href="mailto:recreobyraiz@pm.me">recreobyraiz@pm.me</a><a href="mailto:alaraiz@pm.me">alaraiz@pm.me</a><a href="https://alaraiz.mx">alaraiz.mx</a></div>
-              <div className="col"><span className="mono"><span className="lng-es">Síguenos</span><span className="lng-en">Follow</span></span><a href="https://instagram.com/a.la.ra.iz" target="_blank" rel="noopener noreferrer">@a.la.ra.iz</a><a href="https://instagram.com/recreobyraiz" target="_blank" rel="noopener noreferrer">@recreobyraiz</a><a href="https://instagram.com/detentebyraiz" target="_blank" rel="noopener noreferrer">@detentebyraiz</a></div>
-            </div>
-            <a href="#top" className="brand">Raíz<span className="dot"></span></a>
-          </div>
-          <div className="colophon">
-            <span>© Raíz · CDMX · 2026</span>
-            <span><span className="lng-es">Contada por quienes la viven</span><span className="lng-en">Told by the people who live it</span></span>
-            <span>Space Grotesk · Hanken Grotesk</span>
-          </div>
-        </div>
-      </footer>
+      <SectionNav />
     </main>
   );
 }
@@ -625,37 +627,50 @@ const FAQ_DATA = [
 ];
 
 function FaqPanel() {
-  const [openItems, setOpenItems] = useState<Set<string>>(new Set());
-
-  const toggle = (n: string) => {
-    setOpenItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(n)) next.delete(n);
-      else next.add(n);
-      return next;
-    });
-  };
+  const [active, setActive] = useState<string | null>(null);
+  const selected = FAQ_DATA.find((item) => item.n === active);
 
   return (
-    <div className="faq-grid">
-      <aside className="faq-aside">
-        <span className="kicker">FAQ</span>
-        <h3 className="faq-title">
-          <span className="lng-es">Preguntas honestas,<br />respuestas <em>honestas</em>.</span>
-          <span className="lng-en">Honest questions,<br />honest <em>answers</em>.</span>
-        </h3>
-        <p className="faq-intro">
-          <span className="lng-es">Lo que necesitas saber antes de reservar.</span>
-          <span className="lng-en">What you need to know before you book.</span>
-        </p>
-      </aside>
-      <div className="faq-list">
-        {FAQ_DATA.map((item) => (
-          <div key={item.n} className={`faq-item${openItems.has(item.n) ? " open" : ""}`}>
+    <>
+      {/* Desktop: 2-column fixed layout */}
+      <div className="faq-split-desktop">
+        <div className="faq-questions">
+          {FAQ_DATA.map((item) => (
             <button
-              className="faq-q"
-              onClick={() => toggle(item.n)}
-              aria-expanded={openItems.has(item.n)}
+              key={item.n}
+              className={`faq-q-btn${active === item.n ? " active" : ""}`}
+              onClick={() => setActive(active === item.n ? null : item.n)}
+            >
+              <span className="qn">{item.n}</span>
+              <span className="qtxt">
+                <span className="lng-es">{item.q[0]}</span>
+                <span className="lng-en">{item.q[1]}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="faq-panel">
+          {selected ? (
+            <div className="faq-panel-content">
+              <span className="faq-panel-num">{selected.n}</span>
+              <p><span className="lng-es">{selected.a[0]}</span><span className="lng-en">{selected.a[1]}</span></p>
+            </div>
+          ) : (
+            <div className="faq-panel-empty">
+              <span className="lng-es">← Elige una pregunta</span>
+              <span className="lng-en">← Choose a question</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Mobile: stacked accordion */}
+      <div className="faq-accordion-mobile">
+        {FAQ_DATA.map((item) => (
+          <div key={item.n} className={`faq-mob-item${active === item.n ? " open" : ""}`}>
+            <button
+              className="faq-mob-q"
+              onClick={() => setActive(active === item.n ? null : item.n)}
+              aria-expanded={active === item.n}
             >
               <span className="qn">{item.n}</span>
               <span className="qtxt">
@@ -664,8 +679,8 @@ function FaqPanel() {
               </span>
               <span className="qx" aria-hidden="true"></span>
             </button>
-            <div className="faq-a">
-              <div className="inner">
+            <div className="faq-mob-a">
+              <div className="faq-mob-inner">
                 <span className="lng-es">{item.a[0]}</span>
                 <span className="lng-en">{item.a[1]}</span>
               </div>
@@ -673,6 +688,48 @@ function FaqPanel() {
           </div>
         ))}
       </div>
-    </div>
+    </>
+  );
+}
+
+const SECTION_IDS = ["top", "recreo", "especialistas", "rsvp", "descubre"];
+
+function SectionNav() {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const main = document.querySelector("main");
+    if (!main) return;
+
+    const sections = SECTION_IDS.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const idx = sections.indexOf(entry.target as HTMLElement);
+            if (idx !== -1) setActiveIdx(idx);
+          }
+        });
+      },
+      { root: main, threshold: 0.5 }
+    );
+
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <nav className="section-nav" aria-label="Section indicator">
+      {SECTION_IDS.map((id, i) => (
+        <a
+          key={id}
+          href={`#${id}`}
+          className={`section-dot${i === activeIdx ? " active" : ""}`}
+          aria-label={id}
+        />
+      ))}
+    </nav>
   );
 }
