@@ -128,6 +128,7 @@ export default function HomePage() {
   const [experiences, setExperiences] = useState<Experience[] | null>(null);
   const [facilitators, setFacilitators] = useState<Facilitator[] | null>(null);
   const [heroMounted, setHeroMounted] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
 
   useReveal();
 
@@ -167,9 +168,18 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main>
+    <main data-lang={lang}>
       {/* ============ HERO ============ */}
       <section className="hero section-screen" id="top">
+        <button
+          className="lang-toggle"
+          onClick={() => setLang(lang === "es" ? "en" : "es")}
+          aria-label="Toggle language"
+        >
+          <span className={lang === "es" ? "lang-active" : ""}>ES</span>
+          {" / "}
+          <span className={lang === "en" ? "lang-active" : ""}>EN</span>
+        </button>
         <div className="reveal-hero" ref={wrapRef}>
           <img
             className="reveal-poster"
@@ -471,127 +481,12 @@ export default function HomePage() {
             <span className="folio"><span className="lng-es">Manifiesto · Comunidad · Esporas · Studio · FAQ</span><span className="lng-en">Manifesto · Community · Esporas · Studio · FAQ</span></span>
           </div>
 
-          <div className="disclosures">
-            {/* Disclosure 01 – FAQ */}
-            <details className="disc" open>
-              <summary className="disc-head">
-                <span className="disc-ix">01</span>
-                <span className="disc-tt"><span className="lng-es">Preguntas honestas</span><span className="lng-en">Honest questions</span></span>
-                <span className="disc-meta"><span className="lng-es">Lo que necesitas saber antes de reservar.</span><span className="lng-en">What to know before you book.</span></span>
-                <span className="disc-plus" aria-hidden="true"></span>
-              </summary>
-              <div className="disc-body">
-                <div className="disc-inner">
-                  <FaqPanel />
-                </div>
-              </div>
-            </details>
-
-            {/* Disclosure 02 – Comunidad */}
-            <details className="disc">
-              <summary className="disc-head">
-                <span className="disc-ix">02</span>
-                <span className="disc-tt"><span className="lng-es">No viajas solo</span><span className="lng-en">You don&apos;t travel alone</span></span>
-                <span className="disc-meta"><span className="lng-es">Grupos pequeños de 6 a 8. Cómo funciona.</span><span className="lng-en">Small groups of 6–8. How it works.</span></span>
-                <span className="disc-plus" aria-hidden="true"></span>
-              </summary>
-              <div className="disc-body">
-                <div className="disc-inner">
-                  <div className="comm-grid">
-                    <div className="comm-photo">
-                      <div className="frame"><img src="/assets/comm-bag.jpg" alt="Maleta roja con ramo de flores y sombrero" /></div>
-                    </div>
-                    <div className="comm-copy">
-                      <span className="kicker"><span className="lng-es">La compañía</span><span className="lng-en">The company</span></span>
-                      <h2><span className="lng-es">No viajas solo.<br />Viajas con los <em>tuyos</em>.</span><span className="lng-en">You don&apos;t travel alone.<br />You travel with <em>your people</em>.</span></h2>
-                      <p className="lede"><span className="lng-es">Recreo se vive en grupos pequeños de desconocidos que rara vez siguen siéndolo.</span><span className="lng-en">Recreo happens in small groups of strangers who rarely stay strangers.</span></p>
-                      <div className="comm-stats">
-                        <div><div className="cn">6–8</div><div className="ck"><span className="lng-es">Personas por grupo</span><span className="lng-en">People per group</span></div></div>
-                        <div><div className="cn">1</div><div className="ck"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></div></div>
-                        <div><div className="cn"><span className="lng-es">Día 1</span><span className="lng-en">Day 1</span></div><div className="ck"><span className="lng-es">Ya no son desconocidos</span><span className="lng-en">No longer strangers</span></div></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </details>
-
-            {/* Disclosure 03 – Manifiesto */}
-            <details className="disc" id="manifiesto">
-              <summary className="disc-head">
-                <span className="disc-ix">03</span>
-                <span className="disc-tt"><span className="lng-es">El manifiesto</span><span className="lng-en">The manifesto</span></span>
-                <span className="disc-meta"><span className="lng-es">Por qué la ciudad se cuenta desde adentro.</span><span className="lng-en">Why the city is told from the inside.</span></span>
-                <span className="disc-plus" aria-hidden="true"></span>
-              </summary>
-              <div className="disc-body">
-                <div className="disc-inner">
-                  <div className="manifesto-grid">
-                    <aside className="manifesto-aside">
-                      <span className="kicker">Editorial · Núm. 01</span>
-                      <h3 className="big"><span className="lng-es">No se trata <em>sobre</em> nosotros.<br />La contamos <em>nosotros</em>.</span><span className="lng-en">It&apos;s not <em>about</em> us.<br />We tell it <em>ourselves</em>.</span></h3>
-                    </aside>
-                    <div className="manifesto-body">
-                      <p className="lng-es">Durante años, alguien más contó esta ciudad. La empacó en rutas, la tradujo a una sola versión y se llevó el valor a otra parte. Raíz nace de una incomodidad simple: la Ciudad de México merece narrarse desde adentro.</p>
-                      <p className="lng-en">For years, someone else told this city to you. They packed it into routes, translated it into a single version, and took the value somewhere else. Raíz starts from a simple discomfort: Mexico City deserves to be told from the inside.</p>
-                      <p className="lng-es">No somos una agencia. Somos guías, cocineros, productores, fixers y vecinos que decidimos dejar de ser el telón de fondo de la experiencia de alguien más.</p>
-                      <p className="lng-en">We&apos;re not an agency. We&apos;re guides, cooks, producers, fixers and neighbors who decided to stop being the backdrop to someone else&apos;s experience.</p>
-                      <ul className="manifesto-principles">
-                        <li><span className="pn">01</span><span><span className="lng-es"><b>Contada en primera persona.</b> Quien te guía vive lo que narra.</span><span className="lng-en"><b>Told in the first person.</b> Whoever guides you lives what they tell.</span></span></li>
-                        <li><span className="pn">02</span><span><span className="lng-es"><b>El valor se queda.</b> Pagas a la comunidad, no a un intermediario.</span><span className="lng-en"><b>The value stays.</b> You pay the community, not a middleman.</span></span></li>
-                        <li><span className="pn">03</span><span><span className="lng-es"><b>Real antes que auténtico.</b> Mostramos la ciudad con sus tensiones.</span><span className="lng-en"><b>Real before authentic.</b> We show the city with its tensions.</span></span></li>
-                        <li><span className="pn">04</span><span><span className="lng-es"><b>Grupos pequeños.</b> Una conversación, no una multitud.</span><span className="lng-en"><b>Small groups.</b> A conversation, not a crowd.</span></span></li>
-                      </ul>
-                      <p className="manifesto-sign"><span className="lng-es">—El colectivo Raíz</span><span className="lng-en">—The Raíz collective</span><span>Ciudad de México · 2026</span></p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </details>
-
-            {/* Disclosure 04 – Fundadores */}
-            <details className="disc">
-              <summary className="disc-head">
-                <span className="disc-ix">04</span>
-                <span className="disc-tt"><span className="lng-es">Quiénes fundaron Raíz</span><span className="lng-en">Who founded Raíz</span></span>
-                <span className="disc-meta"><span className="lng-es">Fernanda Resendiz y Cesar Jeronimo Esquinca.</span><span className="lng-en">Fernanda Resendiz and Cesar Jeronimo Esquinca.</span></span>
-                <span className="disc-plus" aria-hidden="true"></span>
-              </summary>
-              <div className="disc-body">
-                <div className="disc-inner">
-                  <div className="founders">
-                    <article className="founder-card" data-c="slate">
-                      <div className="fc-top">
-                        <span className="fc-avatar"><img src="/assets/team-fernanda.jpg" alt="Fernanda Resendiz" /></span>
-                        <div className="fc-id">
-                          <span className="fc-role"><span className="lng-es">Co-fundadora · Strategy</span><span className="lng-en">Co-founder · Strategy</span></span>
-                          <h3 className="fc-name">Fernanda Resendiz</h3>
-                          <span className="fc-disc">Travel &amp; Experience Design</span>
-                        </div>
-                      </div>
-                      <p className="fc-bio"><span className="lng-es">Una década en el corazón de la aerolínea más grande de México: customer journeys, estrategia con el C-suite y planeación de red.</span><span className="lng-en">A decade at the heart of Mexico&apos;s largest airline: customer journeys, C-suite strategy and network planning.</span></p>
-                    </article>
-                    <article className="founder-card" data-c="clay">
-                      <div className="fc-top">
-                        <span className="fc-avatar"><img src="/assets/team-cesar.jpg" alt="Cesar Jeronimo Esquinca" /></span>
-                        <div className="fc-id">
-                          <span className="fc-role"><span className="lng-es">Co-fundador · Cultura</span><span className="lng-en">Co-founder · Culture</span></span>
-                          <h3 className="fc-name">Cesar Jeronimo Esquinca</h3>
-                          <span className="fc-disc"><span className="lng-es">Facilitador · Cocinero de raíz</span><span className="lng-en">Facilitator · Roots cook</span></span>
-                        </div>
-                      </div>
-                      <p className="fc-bio"><span className="lng-es">Más de quince años en la intersección entre territorio, gastronomía y comunidad. Ha cocinado en Italia, Inglaterra y Francia.</span><span className="lng-en">Over fifteen years at the intersection of territory, gastronomy and community. He has cooked in Italy, England and France.</span></p>
-                    </article>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </div>
+          <DiscoverPanel />
         </div>
 
-        {/* Footer inline within descubre section */}
-        <footer>
-          <div className="wrap">
+        {/* Footer inside descubre, distributed full-width */}
+        <footer id="footer">
+          <div className="wrap foot-wide">
             <p className="foot-manifesto"><span className="lng-es">Esto no es un tour.<br />Es una <em>introducción</em>.</span><span className="lng-en">This isn&apos;t a tour.<br />It&apos;s an <em>introduction</em>.</span></p>
             <div className="foot-bottom">
               <div className="foot-cols">
@@ -605,7 +500,7 @@ export default function HomePage() {
             <div className="colophon">
               <span>© Raíz · CDMX · 2026</span>
               <span><span className="lng-es">Contada por quienes la viven</span><span className="lng-en">Told by the people who live it</span></span>
-              <span>Space Grotesk · Hanken Grotesk</span>
+              <span><a href="https://www.taak-studio.cc" target="_blank" rel="noopener noreferrer">Taak Studio</a></span>
             </div>
           </div>
         </footer>
@@ -626,73 +521,126 @@ const FAQ_DATA = [
   { n: "06", q: ["¿Cuándo puedo reservar?", "When can I book?"], a: ["El lanzamiento público es la semana del 29 de junio al 4 de julio de 2026. Los cupos son limitados y revisamos cada solicitud personalmente.", "The public launch is the week of June 29 – July 4, 2026. Spots are limited and we review every request personally."] },
 ];
 
-function FaqPanel() {
-  const [active, setActive] = useState<string | null>(null);
-  const selected = FAQ_DATA.find((item) => item.n === active);
+function DiscoverPanel() {
+  const [active, setActive] = useState<string>("faq");
+
+  const sections = [
+    { id: "faq", n: "01", label: ["Preguntas honestas", "Honest questions"], meta: ["Lo que necesitas saber antes de reservar.", "What to know before you book."] },
+    { id: "comunidad", n: "02", label: ["No viajas solo", "You don\u2019t travel alone"], meta: ["Grupos pequeños de 6 a 8. Cómo funciona.", "Small groups of 6\u20138. How it works."] },
+    { id: "manifiesto", n: "03", label: ["El manifiesto", "The manifesto"], meta: ["Por qué la ciudad se cuenta desde adentro.", "Why the city is told from the inside."] },
+    { id: "fundadores", n: "04", label: ["Quiénes fundaron Raíz", "Who founded Raíz"], meta: ["Fernanda Resendiz y Cesar Jeronimo Esquinca.", "Fernanda Resendiz and Cesar Jeronimo Esquinca."] },
+  ];
 
   return (
-    <>
-      {/* Desktop: 2-column fixed layout */}
-      <div className="faq-split-desktop">
-        <div className="faq-questions">
-          {FAQ_DATA.map((item) => (
-            <button
-              key={item.n}
-              className={`faq-q-btn${active === item.n ? " active" : ""}`}
-              onClick={() => setActive(active === item.n ? null : item.n)}
-            >
-              <span className="qn">{item.n}</span>
-              <span className="qtxt">
-                <span className="lng-es">{item.q[0]}</span>
-                <span className="lng-en">{item.q[1]}</span>
+    <div className="discover-grid">
+      {/* Column A — section navigation */}
+      <div className="discover-nav">
+        {sections.map((sec) => (
+          <button
+            key={sec.id}
+            className={`discover-btn${active === sec.id ? " active" : ""}`}
+            onClick={() => setActive(sec.id)}
+            aria-expanded={active === sec.id}
+          >
+            <span className="disc-ix">{sec.n}</span>
+            <div className="discover-btn-text">
+              <span className="disc-tt">
+                <span className="lng-es">{sec.label[0]}</span>
+                <span className="lng-en">{sec.label[1]}</span>
               </span>
-            </button>
-          ))}
-        </div>
-        <div className="faq-panel">
-          {selected ? (
-            <div className="faq-panel-content">
-              <span className="faq-panel-num">{selected.n}</span>
-              <p><span className="lng-es">{selected.a[0]}</span><span className="lng-en">{selected.a[1]}</span></p>
-            </div>
-          ) : (
-            <div className="faq-panel-empty">
-              <span className="lng-es">← Elige una pregunta</span>
-              <span className="lng-en">← Choose a question</span>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Mobile: stacked accordion */}
-      <div className="faq-accordion-mobile">
-        {FAQ_DATA.map((item) => (
-          <div key={item.n} className={`faq-mob-item${active === item.n ? " open" : ""}`}>
-            <button
-              className="faq-mob-q"
-              onClick={() => setActive(active === item.n ? null : item.n)}
-              aria-expanded={active === item.n}
-            >
-              <span className="qn">{item.n}</span>
-              <span className="qtxt">
-                <span className="lng-es">{item.q[0]}</span>
-                <span className="lng-en">{item.q[1]}</span>
+              <span className="disc-meta">
+                <span className="lng-es">{sec.meta[0]}</span>
+                <span className="lng-en">{sec.meta[1]}</span>
               </span>
-              <span className="qx" aria-hidden="true"></span>
-            </button>
-            <div className="faq-mob-a">
-              <div className="faq-mob-inner">
-                <span className="lng-es">{item.a[0]}</span>
-                <span className="lng-en">{item.a[1]}</span>
-              </div>
             </div>
-          </div>
+            <span className="disc-plus" aria-hidden="true"></span>
+          </button>
         ))}
       </div>
-    </>
+
+      {/* Column B — content panel */}
+      <div className="discover-panel">
+        {active === "faq" && (
+          <div className="discover-panel-inner">
+            {FAQ_DATA.map((item) => (
+              <div key={item.n} className="faq-item-block">
+                <div className="faq-item-q">
+                  <span className="qn">{item.n}</span>
+                  <span className="qtxt"><span className="lng-es">{item.q[0]}</span><span className="lng-en">{item.q[1]}</span></span>
+                </div>
+                <div className="faq-item-a">
+                  <p><span className="lng-es">{item.a[0]}</span><span className="lng-en">{item.a[1]}</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {active === "comunidad" && (
+          <div className="discover-panel-inner disc-content">
+            <span className="kicker"><span className="lng-es">La compañía</span><span className="lng-en">The company</span></span>
+            <h3><span className="lng-es">No viajas solo.<br />Viajas con los <em>tuyos</em>.</span><span className="lng-en">You don&apos;t travel alone.<br />You travel with <em>your people</em>.</span></h3>
+            <p className="lede"><span className="lng-es">Recreo se vive en grupos pequeños de desconocidos que rara vez siguen siéndolo.</span><span className="lng-en">Recreo happens in small groups of strangers who rarely stay strangers.</span></p>
+            <div className="comm-stats">
+              <div><div className="cn">6–8</div><div className="ck"><span className="lng-es">Personas por grupo</span><span className="lng-en">People per group</span></div></div>
+              <div><div className="cn">1</div><div className="ck"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></div></div>
+              <div><div className="cn"><span className="lng-es">Día 1</span><span className="lng-en">Day 1</span></div><div className="ck"><span className="lng-es">Ya no son desconocidos</span><span className="lng-en">No longer strangers</span></div></div>
+            </div>
+          </div>
+        )}
+
+        {active === "manifiesto" && (
+          <div className="discover-panel-inner disc-content" id="manifiesto">
+            <span className="kicker">Editorial · Núm. 01</span>
+            <h3><span className="lng-es">No se trata <em>sobre</em> nosotros.<br />La contamos <em>nosotros</em>.</span><span className="lng-en">It&apos;s not <em>about</em> us.<br />We tell it <em>ourselves</em>.</span></h3>
+            <p className="lng-es">Durante años, alguien más contó esta ciudad. La empacó en rutas, la tradujo a una sola versión y se llevó el valor a otra parte. Raíz nace de una incomodidad simple: la Ciudad de México merece narrarse desde adentro.</p>
+            <p className="lng-en">For years, someone else told this city to you. They packed it into routes, translated it into a single version, and took the value somewhere else. Raíz starts from a simple discomfort: Mexico City deserves to be told from the inside.</p>
+            <p className="lng-es">No somos una agencia. Somos guías, cocineros, productores, fixers y vecinos que decidimos dejar de ser el telón de fondo de la experiencia de alguien más.</p>
+            <p className="lng-en">We&apos;re not an agency. We&apos;re guides, cooks, producers, fixers and neighbors who decided to stop being the backdrop to someone else&apos;s experience.</p>
+            <ul className="manifesto-principles">
+              <li><span className="pn">01</span><span><span className="lng-es"><b>Contada en primera persona.</b> Quien te guía vive lo que narra.</span><span className="lng-en"><b>Told in the first person.</b> Whoever guides you lives what they tell.</span></span></li>
+              <li><span className="pn">02</span><span><span className="lng-es"><b>El valor se queda.</b> Pagas a la comunidad, no a un intermediario.</span><span className="lng-en"><b>The value stays.</b> You pay the community, not a middleman.</span></span></li>
+              <li><span className="pn">03</span><span><span className="lng-es"><b>Real antes que auténtico.</b> Mostramos la ciudad con sus tensiones.</span><span className="lng-en"><b>Real before authentic.</b> We show the city with its tensions.</span></span></li>
+              <li><span className="pn">04</span><span><span className="lng-es"><b>Grupos pequeños.</b> Una conversación, no una multitud.</span><span className="lng-en"><b>Small groups.</b> A conversation, not a crowd.</span></span></li>
+            </ul>
+            <p className="manifesto-sign"><span className="lng-es">—El colectivo Raíz</span><span className="lng-en">—The Raíz collective</span><span>Ciudad de México · 2026</span></p>
+          </div>
+        )}
+
+        {active === "fundadores" && (
+          <div className="discover-panel-inner disc-content">
+            <div className="founders">
+              <article className="founder-card" data-c="slate">
+                <div className="fc-top">
+                  <span className="fc-avatar"><img src="/assets/team-fernanda.jpg" alt="Fernanda Resendiz" /></span>
+                  <div className="fc-id">
+                    <span className="fc-role"><span className="lng-es">Co-fundadora · Strategy</span><span className="lng-en">Co-founder · Strategy</span></span>
+                    <h3 className="fc-name">Fernanda Resendiz</h3>
+                    <span className="fc-disc">Travel &amp; Experience Design</span>
+                  </div>
+                </div>
+                <p className="fc-bio"><span className="lng-es">Una década en el corazón de la aerolínea más grande de México: customer journeys, estrategia con el C-suite y planeación de red.</span><span className="lng-en">A decade at the heart of Mexico&apos;s largest airline: customer journeys, C-suite strategy and network planning.</span></p>
+              </article>
+              <article className="founder-card" data-c="clay">
+                <div className="fc-top">
+                  <span className="fc-avatar"><img src="/assets/team-cesar.jpg" alt="Cesar Jeronimo Esquinca" /></span>
+                  <div className="fc-id">
+                    <span className="fc-role"><span className="lng-es">Co-fundador · Cultura</span><span className="lng-en">Co-founder · Culture</span></span>
+                    <h3 className="fc-name">Cesar Jeronimo Esquinca</h3>
+                    <span className="fc-disc"><span className="lng-es">Facilitador · Cocinero de raíz</span><span className="lng-en">Facilitator · Roots cook</span></span>
+                  </div>
+                </div>
+                <p className="fc-bio"><span className="lng-es">Más de quince años en la intersección entre territorio, gastronomía y comunidad. Ha cocinado en Italia, Inglaterra y Francia.</span><span className="lng-en">Over fifteen years at the intersection of territory, gastronomy and community. He has cooked in Italy, England and France.</span></p>
+              </article>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-const SECTION_IDS = ["top", "recreo", "especialistas", "rsvp", "descubre"];
+const SECTION_IDS = ["top", "recreo", "especialistas", "rsvp", "descubre", "footer"];
 
 function SectionNav() {
   const [activeIdx, setActiveIdx] = useState(0);
