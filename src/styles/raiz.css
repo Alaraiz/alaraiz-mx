@@ -587,13 +587,14 @@ details[open] > .disc-head .disc-plus::after { transform: translateX(-50%) scale
   grid-template-columns: 1fr 1.2fr;
   gap: clamp(20px, 3vw, 40px);
   align-items: stretch;
-  height: 100%;
+  min-height: 220px;
 }
 .faq-questions {
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
+  max-height: 320px;
   scrollbar-width: thin;
   scrollbar-color: var(--rule) transparent;
 }
@@ -634,6 +635,8 @@ details[open] > .disc-head .disc-plus::after { transform: translateX(-50%) scale
   padding: clamp(20px, 2.5vw, 32px);
   display: flex;
   align-items: center;
+  min-height: 220px;
+  max-height: 320px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--rule) transparent;
@@ -666,8 +669,8 @@ details[open] > .disc-head .disc-plus::after { transform: translateX(-50%) scale
 
 /* Mobile accordion (hidden on desktop) */
 .faq-accordion-mobile { display: none; }
-@media(max-width:700px) {
-  .faq-split-desktop { display: none; }
+@media(max-width:520px) {
+  .faq-split-desktop { display: none !important; }
   .faq-accordion-mobile { display: flex; flex-direction: column; }
 }
 .faq-mob-item { border-bottom: 1px solid var(--rule); }
