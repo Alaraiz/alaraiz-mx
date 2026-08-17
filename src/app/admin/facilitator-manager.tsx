@@ -3,15 +3,15 @@ import { FormEvent, useRef, useState } from "react";
 
 type Row = Record<string, string | number | null>;
 type Props = {
-  data: { experiences: Row[]; facilitators: Row[] };
+  data: { facilitators: Row[] };
   refresh: () => void;
   notify: (message: string) => void;
 };
 
-export default function ExperienceManager({ data, refresh, notify }: Props) {
+export default function FacilitatorManager({ data, refresh, notify }: Props) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [creating, setCreating] = useState(false);
-  const [imageUrl, setImageUrl] = useState("/assets/exp-mesa.jpg");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const active = editing || (creating ? {} : null);
@@ -32,7 +32,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
       const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al subir imagen.");
-      setImageUrl(data.url);
+      setPhotoUrl(data.url);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Error al subir imagen.");
     } finally {
@@ -43,13 +43,13 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
   function startCreating() {
     setEditing(null);
     setCreating(true);
-    setImageUrl("/assets/exp-mesa.jpg");
+    setPhotoUrl("");
   }
 
-  function startEditing(experience: Row) {
+  function startEditing(facilitator: Row) {
     setCreating(false);
-    setEditing(experience);
-    setImageUrl(String(experience.cover_image_url || "/assets/exp-mesa.jpg"));
+    setEditing(facilitator);
+    setPhotoUrl(String(facilitator.photo_url || ""));
   }
 
   function closeModal() {
@@ -64,40 +64,34 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
     );
     const id = editing?.id;
     const path = id
-      ? "/api/admin/experiences/" + id
-      : "/api/admin/experiences";
-    const price = values.price === "" ? null : Number(values.price);
-    const capacity = Number(values.capacity);
+      ? "/api/admin/facilitators/" + id
+      : "/api/admin/facilitators";
 
     try {
       const response = await fetch(path, {
         method: id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...values,
-          coverImageUrl: imageUrl,
-          capacity,
-          price,
-          isPublished: values.isPublished === "on",
+          name: values.name,
+          role: values.role || null,
+          bio: values.bio || null,
+          photoUrl,
           collection: values.collection || null,
-          facilitatorId: values.facilitatorId || null,
-          pace: values.pace || null,
-          zone: values.zone || null,
-          language: values.language || null,
-          includes: values.includes || null,
+          reclaims: values.reclaims || null,
+          isPublished: values.isPublished === "on",
         }),
       });
 
       if (response.ok) {
         closeModal();
         await refresh();
-        notify(id ? "Experiencia actualizada." : "Experiencia creada.");
+        notify(id ? "Facilitador actualizado." : "Facilitador creado.");
       } else {
         const data = await response.json().catch(() => ({ error: "Error desconocido." }));
         notify(data.error || "No se pudo guardar.");
       }
     } catch (err) {
-      notify("Error de red al guardar la experiencia.");
+      notify("Error de red al guardar el facilitador.");
     }
   }
 
@@ -105,24 +99,26 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <p className="admin-muted">
-          Haz clic en una tarjeta para editarla y actualizar la landing.
+          Gestiona los perfiles de los especialistas que guían cada experiencia.
         </p>
         <button className="admin-primary admin-small" onClick={startCreating}>
-          ＋ Nueva experiencia
+          ＋ Nuevo facilitador
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
-        {data.experiences.map((experience) => (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1rem" }}>
+        {data.facilitators.map((facilitator) => (
           <button
             className="admin-panel"
             style={{ cursor: "pointer", textAlign: "left", padding: "0", overflow: "hidden" }}
-            key={String(experience.id)}
-            onClick={() => startEditing(experience)}
+            key={String(facilitator.id)}
+            onClick={() => startEditing(facilitator)}
           >
             <div
               style={{
-                height: 140,
-                backgroundImage: `url(${experience.cover_image_url || "/assets/exp-mesa.jpg"})`,
+                height: 120,
+                backgroundImage: facilitator.photo_url
+                  ? `url(${facilitator.photo_url})`
+                  : "linear-gradient(135deg, #2a2a2a, #3a3a3a)",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 position: "relative",
@@ -132,20 +128,19 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 className="admin-pill"
                 style={{ position: "absolute", top: 8, left: 8, background: "var(--admin-surface)" }}
               >
-                {experience.is_published ? "PUBLICADA" : "BORRADOR"}
+                {facilitator.is_published ? "PUBLICADO" : "BORRADOR"}
               </span>
             </div>
             <div style={{ padding: "1rem" }}>
-              <h3 style={{ fontSize: "1.1rem" }}>{experience.title}</h3>
-              <p className="admin-muted" style={{ fontSize: "0.8rem", marginTop: "0.3rem" }}>
-                {experience.tag || "Sin etiqueta"} · {experience.duration || "Sin duración"} · Cupo{" "}
-                {experience.capacity}
+              <h3 style={{ fontSize: "1rem" }}>{facilitator.name}</h3>
+              <p className="admin-muted" style={{ fontSize: "0.8rem", marginTop: "0.2rem" }}>
+                {facilitator.role || "Sin rol asignado"}
               </p>
             </div>
           </button>
         ))}
-        {!data.experiences.length && (
-          <p className="admin-empty">No hay experiencias creadas todavía.</p>
+        {!data.facilitators.length && (
+          <p className="admin-empty">No hay facilitadores creados todavía.</p>
         )}
       </div>
       {active && (
@@ -159,41 +154,29 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               ×
             </button>
             <p className="admin-kicker">
-              {editing ? "Editar experiencia" : "Nueva experiencia"}
+              {editing ? "Editar facilitador" : "Nuevo facilitador"}
             </p>
-            <h3>{editing?.title || "Crear experiencia"}</h3>
+            <h3>{editing ? String(editing.name) : "Crear facilitador"}</h3>
             <div className="admin-form-grid">
               <label>
                 Nombre
-                <input name="title" defaultValue={String(active.title || "")} required />
+                <input name="name" defaultValue={String(active.name || "")} required />
               </label>
               <label>
-                Etiqueta
-                <input name="tag" defaultValue={String(active.tag || "")} />
+                Rol / Especialidad
+                <input name="role" defaultValue={String(active.role || "")} placeholder="Ej. Sommelier, Chef, Guía" />
               </label>
               <label>
-                Duración
-                <input name="duration" defaultValue={String(active.duration || "")} />
+                Colección
+                <select name="collection" defaultValue={String(active.collection || "")}>
+                  <option value="">— Sin colección —</option>
+                  <option value="Colección II">Colección II</option>
+                  <option value="Colección III">Colección III</option>
+                  <option value="Próximamente">Próximamente</option>
+                </select>
               </label>
               <label>
-                Precio MXN
-                <input
-                  name="price"
-                  type="number"
-                  defaultValue={active.price == null ? "" : String(active.price)}
-                />
-              </label>
-              <label>
-                Cupo total
-                <input
-                  name="capacity"
-                  type="number"
-                  defaultValue={String(active.capacity || 12)}
-                  min="1"
-                />
-              </label>
-              <label>
-                Imagen de portada
+                Foto de perfil
                 <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                   <input
                     ref={fileInputRef}
@@ -207,61 +190,29 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   />
                   {uploading && <span className="admin-muted" style={{ fontSize: "0.75rem" }}>Subiendo…</span>}
                 </div>
-                {imageUrl && (
+                {photoUrl && (
                   <img
-                    src={imageUrl}
+                    src={photoUrl}
                     alt="Preview"
-                    style={{ marginTop: "0.5rem", maxHeight: 120, borderRadius: 6, objectFit: "cover" }}
+                    style={{ marginTop: "0.5rem", maxHeight: 100, borderRadius: 6, objectFit: "cover" }}
                   />
                 )}
                 <input
                   type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="URL de imagen (se llena automáticamente al subir)"
+                  value={photoUrl}
+                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  placeholder="URL de foto (se llena automáticamente al subir)"
                   style={{ marginTop: "0.4rem", fontSize: "0.8rem", opacity: 0.7 }}
                 />
               </label>
-              <label>
-                Colección
-                <select name="collection" defaultValue={String(active.collection || "")}>
-                  <option value="">— Sin colección —</option>
-                  <option value="Colección II">Colección II</option>
-                  <option value="Colección III">Colección III</option>
-                  <option value="Próximamente">Próximamente</option>
-                </select>
-              </label>
-              <label>
-                Anfitrión
-                <select name="facilitatorId" defaultValue={String(active.facilitator_id || "")}>
-                  <option value="">— Sin anfitrión —</option>
-                  {data.facilitators.map((f) => (
-                    <option key={String(f.id)} value={String(f.id)}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Ritmo
-                <input name="pace" defaultValue={String(active.pace || "")} placeholder="Ej. Con pausas, Tranquilo" />
-              </label>
-              <label>
-                Zona
-                <input name="zone" defaultValue={String(active.zone || "")} placeholder="Ej. San Rafael → Centro" />
-              </label>
-              <label>
-                Idioma
-                <input name="language" defaultValue={String(active.language || "ES / EN")} />
-              </label>
             </div>
             <label>
-              Incluye
-              <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Ej. Picnic incluido · Caminata en bosque" />
+              Reclaims / Frase
+              <input name="reclaims" defaultValue={String(active.reclaims || "")} placeholder="Ej. Caminante experto desde 2010" />
             </label>
             <label>
-              Descripción
-              <textarea name="description" rows={5} defaultValue={String(active.description || "")} />
+              Bio
+              <textarea name="bio" rows={4} defaultValue={String(active.bio || "")} placeholder="Breve biografía del facilitador" />
             </label>
             <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
               <input

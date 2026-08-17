@@ -15,16 +15,13 @@ export async function PUT(
     const body = await request.json();
     const { name, role, bio, photoUrl, collection, reclaims, isPublished } = body;
 
+    if (!name) {
+      return NextResponse.json({ error: "El nombre es obligatorio." }, { status: 400 });
+    }
+
     await db.execute({
-      sql: `UPDATE facilitators SET
-              name = ?, role = ?, bio = ?, photo_url = ?,
-              collection = ?, reclaims = ?, is_published = ?
-            WHERE id = ?`,
-      args: [
-        name, role || null, bio || null, photoUrl || null,
-        collection || null, reclaims || null, isPublished ? 1 : 0,
-        params.id,
-      ],
+      sql: `UPDATE facilitators SET name = ?, role = ?, bio = ?, photo_url = ?, collection = ?, reclaims = ?, is_published = ? WHERE id = ?`,
+      args: [name, role || null, bio || null, photoUrl || null, collection || null, reclaims || null, isPublished ? 1 : 0, params.id],
     });
 
     return NextResponse.json({ ok: true });
@@ -38,7 +35,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await requireRole(["admin", "editor"]);
+  const user = await requireRole(["admin"]);
   if (!user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }

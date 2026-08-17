@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import ExperienceManager from "./experience-manager";
+import FacilitatorManager from "./facilitator-manager";
 import CrmManager from "./crm-manager";
 
 type Row = Record<string, string | number | null>;
@@ -155,7 +156,7 @@ export default function AdminDashboard() {
             {tab === "experiences" && (
               <ExperienceManager data={data} refresh={refresh} notify={notify} />
             )}
-            {tab === "facilitators" && <Facilitators />}
+            {tab === "facilitators" && <FacilitatorManager data={data} refresh={refresh} notify={notify} />}
             {tab === "calendar" && <Calendar data={data} refresh={refresh} notify={notify} />}
             {tab === "crm" && (
               <CrmManager data={data} refresh={refresh} notify={notify} />
@@ -213,19 +214,6 @@ function Overview({
         ))}
       </div>
     </>
-  );
-}
-
-function Facilitators() {
-  return (
-    <div className="admin-panel">
-      <p className="admin-kicker">Especialistas de línea</p>
-      <h3 style={{ marginTop: "0.3rem" }}>Gestión de facilitadores</h3>
-      <p className="admin-muted" style={{ marginTop: "0.5rem" }}>
-        Aquí podrás agregar, editar y publicar los perfiles de los especialistas
-        que guían cada experiencia.
-      </p>
-    </div>
   );
 }
 
