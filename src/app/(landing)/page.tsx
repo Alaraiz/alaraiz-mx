@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import ProximasFechas from "./proximas-fechas";
 
 /* ── Scroll-reveal hook (IntersectionObserver) ── */
 function useReveal() {
@@ -591,12 +590,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ PRÓXIMAS FECHAS ============ */}
-      <section className="section-screen" id="fechas">
-        <ProximasFechas />
-      </section>
-
-      {/* ============ FOOTER ============ */}
+      {/* ============ FOOTER (inside last snap section) ============ */}
       <footer>
         <div className="wrap">
           <p className="foot-manifesto"><span className="lng-es">Esto no es un tour.<br />Es una <em>introducción</em>.</span><span className="lng-en">This isn&apos;t a tour.<br />It&apos;s an <em>introduction</em>.</span></p>

@@ -705,13 +705,9 @@ details[open] > .disc-head .disc-plus::after { transform: translateX(-50%) scale
 
 /* ===================== FOOTER ===================== */
 footer {
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: clamp(24px, 4vh, 48px) 0;
+  flex: none;
+  padding: clamp(28px, 4vh, 48px) 0;
   border-top: 1px solid var(--rule);
-  scroll-snap-align: start;
 }
 .foot-manifesto {
   font-family: var(--font-display);
@@ -896,13 +892,8 @@ footer {
   .field { margin-bottom: .5rem; }
 }
 
-/* Footer: auto height on mobile */
+/* Footer: compact on mobile */
 @media(max-width:768px) {
-  footer {
-    height: auto;
-    min-height: 60dvh;
-    padding-block: clamp(36px, 6vh, 64px);
-  }
   .foot-manifesto { font-size: clamp(1.5rem, 5vw, 2.2rem); margin-bottom: clamp(18px, 3vh, 32px); }
   .foot-cols { gap: clamp(18px, 4vw, 32px); }
   .foot-cols .col a { font-size: 0.78rem; }
