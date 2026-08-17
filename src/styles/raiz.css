@@ -765,34 +765,34 @@ details[open] > .disc-head .disc-plus::after { transform: translateX(-50%) scale
 /* ===================== FOOTER ===================== */
 footer {
   flex: none;
-  padding: clamp(28px, 4vh, 48px) 0;
+  padding: clamp(16px, 2.5vh, 28px) 0;
   border-top: 1px solid var(--rule);
 }
 .foot-manifesto {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(1.8rem, 4.2vw, 3.4rem);
-  line-height: 0.96;
+  font-size: clamp(1.3rem, 2.8vw, 2rem);
+  line-height: 1;
   letter-spacing: -0.02em;
-  margin-bottom: clamp(24px, 4vh, 48px);
+  margin-bottom: clamp(12px, 2vh, 24px);
 }
 .foot-manifesto em { font-style: italic; color: var(--accent); }
 .foot-bottom {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 2rem;
+  gap: 1.2rem;
   flex-wrap: wrap;
-  padding-bottom: clamp(20px, 3vh, 36px);
+  padding-bottom: clamp(12px, 2vh, 20px);
   border-bottom: 1px solid var(--rule-soft);
 }
-.foot-cols { display: flex; gap: clamp(24px, 3.5vw, 48px); flex-wrap: wrap; }
-.foot-cols .col { display: flex; flex-direction: column; gap: .4rem; }
-.foot-cols .col a { font-size: 0.82rem; color: var(--ink-dim); transition: color .2s; }
+.foot-cols { display: flex; gap: clamp(16px, 2.5vw, 36px); flex-wrap: wrap; }
+.foot-cols .col { display: flex; flex-direction: column; gap: .25rem; }
+.foot-cols .col a { font-size: 0.76rem; color: var(--ink-dim); transition: color .2s; }
 .foot-cols .col a:hover { color: var(--accent); }
 .foot-bottom .brand {
   font-family: var(--font-display);
-  font-size: 1.85rem;
+  font-size: 1.4rem;
   letter-spacing: 0.02em;
   font-weight: 600;
   display: flex;
@@ -803,8 +803,8 @@ footer {
 .colophon {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-top: 1.2rem;
+  gap: 1rem;
+  margin-top: .8rem;
   font-family: var(--font-mono);
   font-size: 0.56rem;
   letter-spacing: 0.1em;
@@ -953,9 +953,9 @@ footer {
 
 /* Footer: compact on mobile */
 @media(max-width:768px) {
-  .foot-manifesto { font-size: clamp(1.5rem, 5vw, 2.2rem); margin-bottom: clamp(18px, 3vh, 32px); }
-  .foot-cols { gap: clamp(18px, 4vw, 32px); }
-  .foot-cols .col a { font-size: 0.78rem; }
+  .foot-manifesto { font-size: clamp(1.1rem, 4vw, 1.5rem); margin-bottom: clamp(10px, 2vh, 18px); }
+  .foot-cols { gap: clamp(14px, 3vw, 24px); }
+  .foot-cols .col a { font-size: 0.72rem; }
 }
 
 /* Global mobile tightening at 375px */
