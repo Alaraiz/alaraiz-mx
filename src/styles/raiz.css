@@ -986,21 +986,11 @@ footer {
   .leads-grid { max-width: none; }
 }
 
-/* hero-ticker: horizontal scroll on very small screens */
+/* hero-ticker: handled by 768px rule above as 2x2 grid */
 @media(max-width:520px) {
-  .hero-ticker {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .hero-ticker::-webkit-scrollbar { display: none; }
-  .hero-ticker div {
-    flex: 0 0 auto;
-    min-width: 150px;
-    padding: .55rem .9rem;
-  }
-  .hero-ticker .tv { font-size: 0.88rem; }
+  .hero-ticker .tv { font-size: 0.8rem; }
+  .hero-ticker .tk { font-size: 0.48rem; }
+  .hero-ticker div { padding: .4rem .6rem; }
 }
 
 /* RSVP section: allow internal scroll if content overflows */
@@ -1026,12 +1016,7 @@ footer {
   .field { margin-bottom: .5rem; }
 }
 
-/* Footer: compact on mobile */
-@media(max-width:768px) {
-  .foot-manifesto { font-size: clamp(1.1rem, 4vw, 1.5rem); margin-bottom: clamp(10px, 2vh, 18px); }
-  .foot-cols { gap: clamp(14px, 3vw, 24px); }
-  .foot-cols .col a { font-size: 0.72rem; }
-}
+/* Footer compact on mobile — handled by 768px block below */
 
 /* Global mobile tightening at 375px */
 @media(max-width:375px) {
@@ -1091,3 +1076,269 @@ footer {
   transform: scale(1.4);
 }
 @media(max-width:760px) { .section-nav { display: none; } }
+
+/* ===================== MOBILE CAROUSEL — EXPERIENCES ===================== */
+@media(max-width:768px) {
+  .rec-rail {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 12.5vw;
+    gap: 16px;
+    padding-inline: 12.5vw;
+    padding-bottom: 1rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rec-rail::-webkit-scrollbar { display: none; }
+  .rec-card {
+    flex: 0 0 75vw;
+    max-width: 75vw;
+    scroll-snap-align: center;
+    opacity: 0.45;
+    transform: scale(0.92);
+    filter: brightness(0.7);
+    transition: opacity .4s ease, transform .4s ease, filter .4s ease, border-color .3s;
+  }
+  .rec-card.carousel-active {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  .rec-card:hover {
+    transform: none;
+  }
+}
+
+/* ===================== MOBILE CAROUSEL — FACILITATORS ===================== */
+@media(max-width:768px) {
+  .leads-grid {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 12.5vw;
+    gap: 16px;
+    padding-inline: 12.5vw;
+    padding-bottom: 1rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .leads-grid::-webkit-scrollbar { display: none; }
+  .lead-card {
+    flex: 0 0 72vw;
+    max-width: 72vw;
+    scroll-snap-align: center;
+    opacity: 0.45;
+    transform: scale(0.92);
+    filter: brightness(0.7);
+    transition: opacity .4s ease, transform .4s ease, filter .4s ease;
+  }
+  .lead-card.carousel-active {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  .lead-card:hover {
+    transform: none;
+  }
+  .lead-card .portrait {
+    aspect-ratio: 3/4;
+    max-height: 220px;
+  }
+  .portrait-soon {
+    aspect-ratio: 3/4;
+    max-height: 220px;
+  }
+}
+
+/* ===================== MOBILE SECTION HEIGHT / SPACING ===================== */
+@media(max-width:768px) {
+  .section-screen {
+    height: auto;
+    min-height: 100dvh;
+    scroll-snap-align: start;
+    padding: clamp(20px, 4vh, 40px) 0;
+  }
+
+  /* ── Hero: stays full screen ── */
+  .hero.section-screen {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  /* Hero ticker: 2x2 grid, NOT 3+1 row */
+  .hero-ticker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-wrap: unset;
+    overflow-x: visible;
+  }
+  .hero-ticker div {
+    flex: unset;
+    min-width: unset;
+    padding: .5rem .8rem;
+    border-right: none;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .hero-ticker div:nth-child(odd) {
+    border-right: 1px solid var(--rule-soft);
+  }
+  .hero-ticker div:nth-child(n+3) {
+    border-bottom: none;
+  }
+  .hero-ticker .tk { font-size: 0.5rem; }
+  .hero-ticker .tv { font-size: 0.84rem; }
+
+  /* ── Experiences section ── */
+  .recreo.section-screen {
+    padding-top: clamp(24px, 5vh, 48px);
+    padding-bottom: clamp(24px, 4vh, 36px);
+  }
+
+  /* ── Masthead spacing ── */
+  .masthead {
+    margin-bottom: clamp(12px, 2.5vh, 24px);
+  }
+  .masthead h2 {
+    font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  }
+  .masthead .kicker {
+    font-size: 0.56rem;
+  }
+  .masthead .folio {
+    display: none;
+  }
+  /* Lede text */
+  .lede {
+    font-size: 0.88rem;
+    margin-bottom: clamp(16px, 3vh, 28px) !important;
+  }
+
+  /* ── RSVP section (03): internal scroll, compact form ── */
+  #rsvp {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding: clamp(16px, 3vh, 28px) 0;
+  }
+  #rsvp .rsvp-left h2 {
+    font-size: clamp(1.3rem, 5vw, 1.8rem);
+  }
+  #rsvp .rsvp-left .lede {
+    font-size: 0.82rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .launch-card {
+    font-size: 0.82rem;
+    margin-top: .6rem;
+  }
+  .launch-row {
+    padding: .45rem .7rem;
+  }
+  .launch-row .lk { min-width: 40px; font-size: 0.5rem; }
+  .launch-row .lv { font-size: 0.8rem; }
+  .launch-row .lv small { font-size: 0.6rem; }
+  .form-card {
+    padding: clamp(12px, 2vw, 18px);
+  }
+  .form-card h3 { font-size: 1rem; margin-bottom: .15rem; }
+  .fsub { font-size: 0.76rem; margin-bottom: .5rem; }
+  .field { margin-bottom: .45rem; }
+  .field label { font-size: 0.52rem; margin-bottom: .2rem; }
+  .field input, .field select, .field textarea {
+    padding: .4rem .6rem;
+    font-size: 0.82rem;
+  }
+  .field textarea { rows: 1; }
+  .chips { gap: .3rem; }
+  .chip { font-size: 0.52rem; padding: .3em .6em; }
+  .form-actions { gap: .5rem; margin-top: .2rem; }
+  .form-note { font-size: 0.48rem; }
+
+  /* ── Descubre section (04): stackable, internal scroll ── */
+  #descubre {
+    height: auto;
+    min-height: 100dvh;
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding: clamp(16px, 3vh, 28px) 0;
+  }
+  #descubre .masthead h2 {
+    font-size: clamp(1.3rem, 5vw, 1.8rem);
+  }
+  .discover-grid {
+    grid-template-columns: 1fr;
+    gap: .8rem;
+  }
+  .discover-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-top: none;
+  }
+  .discover-btn {
+    padding: .6rem .5rem;
+    gap: .4rem;
+    border-bottom: 1px solid var(--rule-soft);
+    border-right: 1px solid var(--rule-soft);
+    min-height: 56px;
+    align-items: center;
+  }
+  .discover-btn:nth-child(even) { border-right: none; }
+  .discover-btn .disc-ix { font-size: 0.5rem; }
+  .discover-btn .disc-tt { font-size: 0.72rem; line-height: 1.15; }
+  .discover-btn .disc-meta { display: none; }
+  .discover-btn .disc-plus { width: 12px; height: 12px; }
+  .discover-panel {
+    height: 45vh;
+    min-height: unset;
+    max-height: unset;
+    padding: clamp(12px, 2vw, 18px);
+    border-radius: 10px;
+    overflow-y: auto;
+  }
+  .discover-panel-inner {
+    min-height: 100%;
+  }
+  .faq-item-block { padding: .5rem 0; }
+  .faq-item-q .qtxt { font-size: 0.82rem; }
+  .faq-item-a p { font-size: 0.78rem; }
+
+  /* ── Footer: compact ── */
+  footer {
+    padding: clamp(10px, 2vh, 16px) 0 0;
+  }
+  .foot-manifesto {
+    font-size: clamp(0.95rem, 3.5vw, 1.3rem);
+    margin-bottom: clamp(8px, 1.5vh, 14px);
+  }
+  .foot-bottom {
+    flex-direction: column;
+    gap: .8rem;
+    padding-bottom: .6rem;
+  }
+  .foot-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem .8rem;
+    width: 100%;
+  }
+  .foot-cols .col { gap: .15rem; }
+  .foot-cols .col .mono { font-size: 0.5rem; }
+  .foot-cols .col a { font-size: 0.68rem; }
+  .foot-bottom .brand { font-size: 1.1rem; }
+  .colophon {
+    margin-top: .4rem;
+    padding-bottom: .6rem;
+    font-size: 0.5rem;
+    gap: .5rem;
+  }
+}
