@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     setSessionCookie(token);
 
     return NextResponse.json({ ok: true, role: user.role });
-  } catch {
+  } catch (err) {
+    console.error("[login] Error:", err);
     return NextResponse.json(
       { error: "Error al iniciar sesión." },
       { status: 500 }

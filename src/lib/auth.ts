@@ -94,7 +94,7 @@ export function clearSessionCookie() {
  */
 export async function authenticate(email: string, password: string) {
   const result = await db.execute({
-    sql: "SELECT id, email, password_hash, role FROM users WHERE email = ?",
+    sql: "SELECT id, email, password_hash, role FROM users WHERE email = ? COLLATE NOCASE",
     args: [email],
   });
 
