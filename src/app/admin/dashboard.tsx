@@ -400,6 +400,11 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ experienceId: "", date: "", time: "10:00", capacity: "12" });
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   // Group availability slots by week
   const sortedDates = useMemo(() => {
@@ -418,6 +423,30 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
     });
     return map;
   }, [data.reservations]);
+
+  // Group dates by day for the calendar grid
+  const slotsByDate = useMemo(() => {
+    const map: Record<string, Row[]> = {};
+    data.dates.forEach((slot) => {
+      const d = String(slot.date);
+      if (!map[d]) map[d] = [];
+      map[d].push(slot);
+    });
+    return map;
+  }, [data.dates]);
+
+  // Calendar grid helpers
+  const monthYear = currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDayOfWeek = (new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() + 6) % 7; // Monday-based
+  const today = new Date().toISOString().slice(0, 10);
+
+  function prevMonth() {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  }
+  function nextMonth() {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  }
 
   async function createSlot(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -457,12 +486,49 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
             {sortedDates.length} fecha{sortedDates.length !== 1 ? "s" : ""} programada{sortedDates.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          className={showForm ? "admin-btn" : "admin-primary admin-small"}
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? "Cancelar" : "＋ Nueva fecha"}
-        </button>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          {/* View toggle */}
+          <div style={{ display: "flex", gap: "0.25rem", marginRight: "0.5rem" }}>
+            <button
+              type="button"
+              className="admin-pill"
+              onClick={() => setView("calendar")}
+              style={{
+                cursor: "pointer",
+                background: view === "calendar" ? "var(--admin-accent)" : "transparent",
+                color: view === "calendar" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+                border: "1px solid var(--admin-border)",
+                borderRadius: 20,
+                padding: "0.25rem 0.6rem",
+                fontSize: "0.68rem",
+              }}
+            >
+              Mes
+            </button>
+            <button
+              type="button"
+              className="admin-pill"
+              onClick={() => setView("list")}
+              style={{
+                cursor: "pointer",
+                background: view === "list" ? "var(--admin-accent)" : "transparent",
+                color: view === "list" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+                border: "1px solid var(--admin-border)",
+                borderRadius: 20,
+                padding: "0.25rem 0.6rem",
+                fontSize: "0.68rem",
+              }}
+            >
+              Lista
+            </button>
+          </div>
+          <button
+            className={showForm ? "admin-btn" : "admin-primary admin-small"}
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? "Cancelar" : "＋ Nueva fecha"}
+          </button>
+        </div>
       </div>
 
       {/* Create availability form */}
@@ -520,59 +586,150 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
         </form>
       )}
 
-      {/* Calendar grid */}
-      {sortedDates.length === 0 ? (
-        <div className="admin-panel">
-          <p className="admin-muted">No hay fechas programadas. Crea una para empezar.</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {sortedDates.map((slot) => {
-            const booked = Number(slot.booked) || 0;
-            const capacity = Number(slot.capacity) || 12;
-            const pct = Math.min((booked / capacity) * 100, 100);
-            const avReservations = reservationsByAvailability[String(slot.id)] || [];
-            return (
-              <div key={String(slot.id)} className="admin-panel" style={{ padding: "0.8rem 1rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-                  <div style={{ minWidth: 80 }}>
-                    <strong style={{ fontSize: "0.9rem" }}>{formatCalDate(String(slot.date))}</strong>
-                    <span className="admin-muted" style={{ display: "block", fontSize: "0.75rem" }}>{String(slot.time)}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 120 }}>
-                    <span style={{ fontSize: "0.85rem" }}>{String(slot.title)}</span>
-                  </div>
-                  <div style={{ minWidth: 100, textAlign: "right" }}>
-                    <span style={{ fontSize: "0.8rem" }}>
-                      {booked}/{capacity} cupos
-                    </span>
-                    <div style={{ height: 4, background: "var(--admin-border)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: pct > 80 ? "#e55" : "var(--admin-accent)", borderRadius: 2, transition: "width 0.3s" }} />
-                    </div>
-                  </div>
-                  <span className="admin-muted" style={{ fontSize: "0.7rem", textTransform: "uppercase" }}>
-                    {String(slot.status)}
-                  </span>
-                </div>
-                {avReservations.length > 0 && (
-                  <div style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid var(--admin-border)" }}>
-                    {avReservations.map((r) => (
-                      <div key={String(r.id)} style={{ display: "flex", gap: "0.5rem", fontSize: "0.78rem", padding: "0.2rem 0", color: "var(--admin-muted)" }}>
-                        <span>{String(r.name)}</span>
-                        <span>·</span>
-                        <span>{String(r.attendees_count)} pax</span>
-                        <span>·</span>
-                        <span style={{ color: String(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
-                          {String(r.payment_status)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+      {/* CALENDAR GRID VIEW */}
+      {view === "calendar" && (
+        <div className="admin-panel" style={{ padding: "1rem" }}>
+          {/* Month navigation */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <button type="button" className="admin-btn admin-small" onClick={prevMonth}>←</button>
+            <strong style={{ fontSize: "0.95rem", textTransform: "capitalize" }}>{monthYear}</strong>
+            <button type="button" className="admin-btn admin-small" onClick={nextMonth}>→</button>
+          </div>
+
+          {/* Weekday headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", marginBottom: "2px" }}>
+            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
+              <div key={d} style={{ textAlign: "center", fontSize: "0.65rem", color: "var(--admin-muted)", padding: "0.3rem 0", fontWeight: 600 }}>
+                {d}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Days grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px" }}>
+            {/* Empty cells before first day */}
+            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+              <div key={`empty-${i}`} style={{ minHeight: 56 }} />
+            ))}
+            {/* Day cells */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const dateKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const daySlots = slotsByDate[dateKey] || [];
+              const isToday = dateKey === today;
+              const hasSlots = daySlots.length > 0;
+
+              return (
+                <div
+                  key={day}
+                  style={{
+                    minHeight: 56,
+                    padding: "0.2rem 0.3rem",
+                    borderRadius: 6,
+                    background: isToday ? "var(--admin-surface-2)" : "transparent",
+                    border: isToday ? "1px solid var(--admin-accent)" : "1px solid transparent",
+                    position: "relative",
+                    cursor: hasSlots ? "default" : undefined,
+                  }}
+                >
+                  <span style={{
+                    fontSize: "0.7rem",
+                    fontWeight: isToday ? 700 : 400,
+                    color: isToday ? "var(--admin-accent)" : "var(--admin-text)",
+                  }}>
+                    {day}
+                  </span>
+                  {/* Slot indicators */}
+                  {daySlots.map((slot) => {
+                    const booked = Number(slot.booked) || 0;
+                    const cap = Number(slot.capacity) || 12;
+                    const full = booked >= cap;
+                    return (
+                      <div
+                        key={String(slot.id)}
+                        title={`${String(slot.title)} · ${String(slot.time)} · ${booked}/${cap}`}
+                        style={{
+                          fontSize: "0.55rem",
+                          lineHeight: 1.2,
+                          padding: "0.15rem 0.25rem",
+                          marginTop: "0.15rem",
+                          borderRadius: 3,
+                          background: full ? "rgba(229,57,53,0.15)" : "rgba(var(--admin-accent-rgb, 180,120,40),0.15)",
+                          color: full ? "#e55" : "var(--admin-accent)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {String(slot.time).slice(0, 5)} · {String(slot.title).slice(0, 10)}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
+      )}
+
+      {/* LIST VIEW */}
+      {view === "list" && (
+        <>
+          {sortedDates.length === 0 ? (
+            <div className="admin-panel">
+              <p className="admin-muted">No hay fechas programadas. Crea una para empezar.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {sortedDates.map((slot) => {
+                const booked = Number(slot.booked) || 0;
+                const capacity = Number(slot.capacity) || 12;
+                const pct = Math.min((booked / capacity) * 100, 100);
+                const avReservations = reservationsByAvailability[String(slot.id)] || [];
+                return (
+                  <div key={String(slot.id)} className="admin-panel" style={{ padding: "0.8rem 1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 80 }}>
+                        <strong style={{ fontSize: "0.9rem" }}>{formatCalDate(String(slot.date))}</strong>
+                        <span className="admin-muted" style={{ display: "block", fontSize: "0.75rem" }}>{String(slot.time)}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <span style={{ fontSize: "0.85rem" }}>{String(slot.title)}</span>
+                      </div>
+                      <div style={{ minWidth: 100, textAlign: "right" }}>
+                        <span style={{ fontSize: "0.8rem" }}>
+                          {booked}/{capacity} cupos
+                        </span>
+                        <div style={{ height: 4, background: "var(--admin-border)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: pct > 80 ? "#e55" : "var(--admin-accent)", borderRadius: 2, transition: "width 0.3s" }} />
+                        </div>
+                      </div>
+                      <span className="admin-muted" style={{ fontSize: "0.7rem", textTransform: "uppercase" }}>
+                        {String(slot.status)}
+                      </span>
+                    </div>
+                    {avReservations.length > 0 && (
+                      <div style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid var(--admin-border)" }}>
+                        {avReservations.map((r) => (
+                          <div key={String(r.id)} style={{ display: "flex", gap: "0.5rem", fontSize: "0.78rem", padding: "0.2rem 0", color: "var(--admin-muted)" }}>
+                            <span>{String(r.name)}</span>
+                            <span>·</span>
+                            <span>{String(r.attendees_count)} pax</span>
+                            <span>·</span>
+                            <span style={{ color: String(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
+                              {String(r.payment_status)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </>
   );
