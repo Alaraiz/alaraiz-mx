@@ -13,7 +13,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { title, tag, description, duration, price, capacity, coverImageUrl, isPublished, collection, facilitatorId, pace, zone, language, includes } = body;
+    const { title, tag, description, duration, price, capacity, coverImageUrl, isPublished, collection, facilitatorId, pace, zone, language, includes, titleEn, tagEn, descriptionEn, includesEn } = body;
 
     await db.execute({
       sql: `UPDATE experiences SET
@@ -21,6 +21,7 @@ export async function PUT(
               price = ?, capacity = ?, cover_image_url = ?,
               is_published = ?, collection = ?, facilitator_id = ?,
               pace = ?, zone = ?, language = ?, includes = ?,
+              title_en = ?, tag_en = ?, description_en = ?, includes_en = ?,
               updated_at = datetime('now')
             WHERE id = ?`,
       args: [
@@ -28,6 +29,7 @@ export async function PUT(
         price ?? null, capacity || 12, coverImageUrl || null,
         isPublished ? 1 : 0, collection || null, facilitatorId || null,
         pace || null, zone || null, language || "ES / EN", includes || null,
+        titleEn || null, tagEn || null, descriptionEn || null, includesEn || null,
         params.id,
       ],
     });

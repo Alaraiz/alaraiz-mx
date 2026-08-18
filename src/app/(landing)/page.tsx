@@ -109,6 +109,10 @@ interface Experience {
   zone: string | null;
   language: string | null;
   includes: string | null;
+  title_en: string | null;
+  tag_en: string | null;
+  description_en: string | null;
+  includes_en: string | null;
   facilitator_id: string | null;
   facilitator_name: string | null;
   facilitator_role: string | null;
@@ -188,6 +192,7 @@ export default function HomePage() {
   const [facilitators, setFacilitators] = useState<Facilitator[] | null>(null);
   const [heroMounted, setHeroMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useReveal();
   useCarousel();
@@ -231,15 +236,53 @@ export default function HomePage() {
     <main data-lang={lang}>
       {/* ============ HERO ============ */}
       <section className="hero section-screen" id="top">
-        <button
-          className="lang-toggle"
-          onClick={() => setLang(lang === "es" ? "en" : "es")}
-          aria-label="Toggle language"
-        >
-          <span className={lang === "es" ? "lang-active" : ""}>ES</span>
-          {" / "}
-          <span className={lang === "en" ? "lang-active" : ""}>EN</span>
-        </button>
+        {/* ── Top nav: lang toggle + hamburger ── */}
+        <div className="top-nav">
+          <button
+            className="lang-toggle"
+            onClick={() => setLang(lang === "es" ? "en" : "es")}
+            aria-label="Toggle language"
+          >
+            <span className={lang === "es" ? "lang-active" : ""}>ES</span>
+            {" / "}
+            <span className={lang === "en" ? "lang-active" : ""}>EN</span>
+          </button>
+          <button
+            className="hamburger-btn"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={menuOpen}
+          >
+            <span className={`hamburger-icon${menuOpen ? " open" : ""}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+
+          {/* ── Dropdown menu ── */}
+          <nav className={`hamburger-menu${menuOpen ? " hamburger-menu--open" : ""}`} aria-hidden={!menuOpen}>
+            <a href="#recreo" onClick={() => setMenuOpen(false)}>
+              <span className="lng-es">Experiencias</span>
+              <span className="lng-en">Experiences</span>
+            </a>
+            <a href="#especialistas" onClick={() => setMenuOpen(false)}>
+              <span className="lng-es">Especialistas</span>
+              <span className="lng-en">Specialists</span>
+            </a>
+            <a href="/detente/02" onClick={() => setMenuOpen(false)}>
+              Détente
+            </a>
+            <a href="#descubre" onClick={() => setMenuOpen(false)}>
+              <span className="lng-es">Más</span>
+              <span className="lng-en">More</span>
+            </a>
+            <a href="#rsvp" className="hamburger-menu__cta" onClick={() => setMenuOpen(false)}>
+              <span className="lng-es">Reserva tu lugar</span>
+              <span className="lng-en">Reserve your spot</span>
+            </a>
+          </nav>
+        </div>
         <div className="reveal-hero" ref={wrapRef}>
           <img
             className="reveal-poster"
@@ -342,10 +385,10 @@ export default function HomePage() {
                       )}
                     </div>
                     <div className="rec-body">
-                      {exp.tag && <span className="rec-tags">{exp.tag}</span>}
-                      <h3 className="rec-name">{exp.title}</h3>
+                      {exp.tag && <span className="rec-tags"><span className="lng-es">{exp.tag}</span>{exp.tag_en && <span className="lng-en">{exp.tag_en}</span>}</span>}
+                      <h3 className="rec-name"><span className="lng-es">{exp.title}</span>{exp.title_en && <span className="lng-en">{exp.title_en}</span>}</h3>
                       {exp.description && (
-                        <p className="rec-product">{exp.description}</p>
+                        <p className="rec-product"><span className="lng-es">{exp.description}</span>{exp.description_en && <span className="lng-en">{exp.description_en}</span>}</p>
                       )}
                       <div className="rec-spec">
                         {exp.duration && (

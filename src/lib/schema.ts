@@ -34,6 +34,10 @@ export async function migrate() {
       zone TEXT,
       language TEXT DEFAULT 'ES / EN',
       includes TEXT,
+      title_en TEXT,
+      tag_en TEXT,
+      description_en TEXT,
+      includes_en TEXT,
       facilitator_id TEXT REFERENCES facilitators(id),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -115,4 +119,14 @@ export async function migrate() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
   ]);
+
+  // Add _en columns to existing experiences tables (safe to run repeatedly)
+  const enColumns = ["title_en", "tag_en", "description_en", "includes_en"];
+  for (const col of enColumns) {
+    try {
+      await db.execute(`ALTER TABLE experiences ADD COLUMN ${col} TEXT`);
+    } catch {
+      // Column already exists — ignore
+    }
+  }
 }

@@ -14,6 +14,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
   const [imageUrl, setImageUrl] = useState("/assets/exp-mesa.jpg");
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [contentLang, setContentLang] = useState<"es" | "en">("es");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const active = editing || (creating ? {} : null);
 
@@ -45,12 +46,14 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
     setEditing(null);
     setCreating(true);
     setImageUrl("/assets/exp-mesa.jpg");
+    setContentLang("es");
   }
 
   function startEditing(experience: Row) {
     setCreating(false);
     setEditing(experience);
     setImageUrl(String(experience.cover_image_url || "/assets/exp-mesa.jpg"));
+    setContentLang("es");
   }
 
   function closeModal() {
@@ -108,6 +111,10 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
           zone: values.zone || null,
           language: values.language || null,
           includes: values.includes || null,
+          titleEn: values.titleEn || null,
+          tagEn: values.tagEn || null,
+          descriptionEn: values.descriptionEn || null,
+          includesEn: values.includesEn || null,
         }),
       });
 
@@ -188,16 +195,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
             </p>
             <h3>{editing ? String(editing.title) : "Completa los datos"}</h3>
 
-            {/* Core fields */}
+            {/* Shared fields (not translatable) */}
             <div className="admin-form-grid">
-              <label>
-                Nombre de la experiencia
-                <input name="title" defaultValue={String(active.title || "")} required placeholder="Ej. Caminata al amanecer" />
-              </label>
-              <label>
-                Etiqueta
-                <input name="tag" defaultValue={String(active.tag || "")} placeholder="Ej. Naturaleza, Gastronomía" />
-              </label>
               <label>
                 Duración
                 <input name="duration" defaultValue={String(active.duration || "")} placeholder="Ej. 3 horas" />
@@ -232,11 +231,6 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   ))}
                 </select>
               </label>
-            </div>
-
-            {/* Detail fields */}
-            <p className="admin-kicker" style={{ marginTop: "0.5rem" }}>Detalles de la landing</p>
-            <div className="admin-form-grid">
               <label>
                 Colección
                 <select name="collection" defaultValue={String(active.collection || "")}>
@@ -251,22 +245,99 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 <input name="pace" defaultValue={String(active.pace || "")} placeholder="Ej. Tranquilo, Con pausas" />
               </label>
               <label>
-                Zona de la experiencia
+                Zona
                 <input name="zone" defaultValue={String(active.zone || "")} placeholder="Ej. Centro → San Rafael" />
               </label>
               <label>
-                Idioma
+                Idioma de la experiencia
                 <input name="language" defaultValue={String(active.language || "ES / EN")} />
               </label>
             </div>
-            <label>
-              ¿Qué incluye?
-              <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Separa cada item con · Ej: Picnic · Caminata guiada · Fotografía" />
-            </label>
-            <label>
-              Descripción
-              <textarea name="description" rows={4} defaultValue={String(active.description || "")} placeholder="Describe la experiencia para la página de detalle" />
-            </label>
+
+            {/* Language tabs for translatable content */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.75rem" }}>
+              <p className="admin-kicker" style={{ margin: 0 }}>Contenido</p>
+              <div style={{ display: "flex", gap: "0.25rem", marginLeft: "auto" }}>
+                <button
+                  type="button"
+                  className="admin-pill"
+                  onClick={() => setContentLang("es")}
+                  style={{
+                    cursor: "pointer",
+                    background: contentLang === "es" ? "var(--admin-accent)" : "transparent",
+                    color: contentLang === "es" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+                    border: "1px solid var(--admin-border)",
+                    borderRadius: 20,
+                    padding: "0.25rem 0.6rem",
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  ES
+                </button>
+                <button
+                  type="button"
+                  className="admin-pill"
+                  onClick={() => setContentLang("en")}
+                  style={{
+                    cursor: "pointer",
+                    background: contentLang === "en" ? "var(--admin-accent)" : "transparent",
+                    color: contentLang === "en" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+                    border: "1px solid var(--admin-border)",
+                    borderRadius: 20,
+                    padding: "0.25rem 0.6rem",
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
+
+            {/* ES content */}
+            <div style={{ display: contentLang === "es" ? "block" : "none" }}>
+              <div className="admin-form-grid">
+                <label>
+                  Nombre de la experiencia
+                  <input name="title" defaultValue={String(active.title || "")} required placeholder="Ej. Caminata al amanecer" />
+                </label>
+                <label>
+                  Etiqueta
+                  <input name="tag" defaultValue={String(active.tag || "")} placeholder="Ej. Naturaleza, Gastronomía" />
+                </label>
+              </div>
+              <label>
+                ¿Qué incluye?
+                <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Separa con comas: Picnic, Caminata guiada, Fotografía" />
+              </label>
+              <label>
+                Descripción
+                <textarea name="description" rows={4} defaultValue={String(active.description || "")} placeholder="Describe la experiencia para la página de detalle" />
+              </label>
+            </div>
+
+            {/* EN content */}
+            <div style={{ display: contentLang === "en" ? "block" : "none" }}>
+              <div className="admin-form-grid">
+                <label>
+                  Experience name (EN)
+                  <input name="titleEn" defaultValue={String(active.title_en || "")} placeholder="E.g. Sunrise hike" />
+                </label>
+                <label>
+                  Tag (EN)
+                  <input name="tagEn" defaultValue={String(active.tag_en || "")} placeholder="E.g. Nature, Gastronomy" />
+                </label>
+              </div>
+              <label>
+                What&apos;s included? (EN)
+                <textarea name="includesEn" rows={2} defaultValue={String(active.includes_en || "")} placeholder="Separate with commas: Picnic, Guided walk, Photography" />
+              </label>
+              <label>
+                Description (EN)
+                <textarea name="descriptionEn" rows={4} defaultValue={String(active.description_en || "")} placeholder="Describe the experience for the detail page" />
+              </label>
+            </div>
 
             {/* Image dropzone */}
             <label className="admin-kicker" style={{ marginTop: "0.5rem" }}>Imagen de portada</label>
