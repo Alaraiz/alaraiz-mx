@@ -110,7 +110,7 @@ export default function AdminDashboard() {
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <a className="admin-logo" href="/">
-          RAÍZ<span>CMS</span>
+          RAÍZ<span>ADMIN</span>
         </a>
         <p className="admin-side-label">Gestión</p>
         <nav>
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
       <section className="admin-main">
         <header className="admin-topbar">
           <div>
-            <p className="admin-kicker">Raíz · CMS</p>
+            <p className="admin-kicker">Raíz</p>
             <h1>{tabs.find((t) => t[0] === tab)?.[1]}</h1>
           </div>
           <a href="/" target="_blank" rel="noreferrer">
@@ -182,6 +182,32 @@ function Overview({
   data: Data;
   setTab: (s: string) => void;
 }) {
+  // Revenue calculations
+  const paid = data.reservations.filter((r) => r.payment_status === "paid");
+  const totalRevenue = paid.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const pendingRevenue = data.reservations
+    .filter((r) => r.payment_status !== "paid")
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  // Last 7 days revenue chart data
+  const chartData = useMemo(() => {
+    const days: { label: string; value: number }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString("es-MX", { weekday: "short" });
+      const dayTotal = paid
+        .filter((r) => String(r.created_at || "").startsWith(key))
+        .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+      days.push({ label, value: dayTotal });
+    }
+    return days;
+  }, [paid]);
+
+  const chartMax = Math.max(...chartData.map((d) => d.value), 1);
+
   return (
     <>
       <div className="admin-panel">
@@ -213,6 +239,56 @@ function Overview({
             <strong style={{ display: "block", fontSize: "1.6rem", marginTop: "0.3rem" }}>{s[1]}</strong>
           </button>
         ))}
+      </div>
+
+      {/* Revenue card with chart */}
+      <div
+        className="admin-panel"
+        style={{ cursor: "pointer" }}
+        onClick={() => setTab("payments")}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+          <div>
+            <p className="admin-kicker">Ingresos</p>
+            <h3 style={{ fontSize: "1.6rem", margin: "0.2rem 0 0" }}>
+              ${totalRevenue.toLocaleString("es-MX")}
+              <span className="admin-muted" style={{ fontSize: "0.75rem", marginLeft: "0.5rem" }}>cobrado</span>
+            </h3>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span className="admin-muted" style={{ fontSize: "0.72rem", display: "block" }}>Pendiente</span>
+            <strong style={{ fontSize: "1.1rem", color: "#e95" }}>
+              ${pendingRevenue.toLocaleString("es-MX")}
+            </strong>
+          </div>
+        </div>
+
+        {/* Mini bar chart — last 7 days */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.4rem", height: 64 }}>
+          {chartData.map((day, i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 32,
+                  height: `${Math.max((day.value / chartMax) * 48, 3)}px`,
+                  background: day.value > 0
+                    ? "var(--admin-accent)"
+                    : "var(--admin-border)",
+                  borderRadius: 4,
+                  transition: "height 0.3s",
+                }}
+                title={`$${day.value.toLocaleString("es-MX")}`}
+              />
+              <span className="admin-muted" style={{ fontSize: "0.6rem", textTransform: "capitalize" }}>
+                {day.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="admin-muted" style={{ fontSize: "0.7rem", marginTop: "0.5rem", textAlign: "right" }}>
+          Últimos 7 días · clic para ver detalle
+        </p>
       </div>
     </>
   );
