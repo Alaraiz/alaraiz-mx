@@ -188,44 +188,6 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
             </p>
             <h3>{editing ? String(editing.title) : "Completa los datos"}</h3>
 
-            {/* Cover image — full width */}
-            <div
-              style={{
-                position: "relative",
-                borderRadius: 8,
-                overflow: "hidden",
-                background: "var(--admin-surface-2)",
-                cursor: "pointer",
-              }}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <img
-                src={imageUrl}
-                alt="Portada"
-                style={{ width: "100%", height: 140, objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1, transition: "opacity 0.2s" }}
-              />
-              <div style={{
-                position: "absolute", inset: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(0,0,0,0.35)",
-                opacity: 0, transition: "opacity 0.2s",
-              }} className="admin-img-overlay">
-                <span style={{ color: "#fff", fontSize: "0.8rem", fontWeight: 500 }}>
-                  {uploading ? "Subiendo…" : "Cambiar imagen"}
-                </span>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
-                }}
-              />
-            </div>
-
             {/* Core fields */}
             <div className="admin-form-grid">
               <label>
@@ -305,6 +267,68 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               Descripción
               <textarea name="description" rows={4} defaultValue={String(active.description || "")} placeholder="Describe la experiencia para la página de detalle" />
             </label>
+
+            {/* Image dropzone */}
+            <label className="admin-kicker" style={{ marginTop: "0.5rem" }}>Imagen de portada</label>
+            <div
+              style={{
+                border: "2px dashed var(--admin-border)",
+                borderRadius: 12,
+                padding: imageUrl && imageUrl !== "/assets/exp-mesa.jpg" ? "0" : "2rem 1rem",
+                textAlign: "center",
+                cursor: "pointer",
+                background: "var(--admin-surface-2)",
+                position: "relative",
+                overflow: "hidden",
+                transition: "border-color 0.2s",
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--admin-accent)"; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--admin-border)"; }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = "var(--admin-border)";
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleImageUpload(file);
+              }}
+            >
+              {imageUrl && imageUrl !== "/assets/exp-mesa.jpg" ? (
+                <>
+                  <img
+                    src={imageUrl}
+                    alt="Portada"
+                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1 }}
+                  />
+                  <div className="admin-img-overlay" style={{
+                    position: "absolute", inset: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(0,0,0,0.4)",
+                  }}>
+                    <span style={{ color: "#fff", fontSize: "0.85rem", fontWeight: 500 }}>
+                      {uploading ? "Subiendo…" : "Clic o arrastra para cambiar"}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ opacity: uploading ? 0.5 : 1 }}>
+                  <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}>🖼</span>
+                  <p style={{ fontSize: "0.85rem", color: "var(--admin-text)", margin: "0 0 0.25rem" }}>
+                    {uploading ? "Subiendo imagen…" : "Arrastra una imagen aquí o haz clic para seleccionar"}
+                  </p>
+                  <p className="admin-muted" style={{ fontSize: "0.72rem", margin: 0 }}>JPG, PNG o WebP · máx 8 MB</p>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
+              />
+            </div>
 
             {/* Publish toggle */}
             <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}>
