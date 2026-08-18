@@ -33,6 +33,7 @@ const adminOnlyTabs = new Set(["crm", "payments"]);
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
   const [role, setRole] = useState<string>("admin");
+  const [userName, setUserName] = useState<string>("");
   const [data, setData] = useState<Data>({
     experiences: [],
     dates: [],
@@ -53,7 +54,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch("/api/admin/me")
       .then((r) => r.json())
-      .then((d) => { if (d.role) setRole(d.role); })
+      .then((d) => {
+        if (d.role) setRole(d.role);
+        if (d.name) setUserName(d.name);
+      })
       .catch(() => {});
   }, []);
 
@@ -153,7 +157,7 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            {tab === "overview" && <Overview data={data} setTab={setTab} />}
+            {tab === "overview" && <Overview data={data} setTab={setTab} userName={userName} />}
             {tab === "experiences" && (
               <ExperienceManager data={data} refresh={refresh} notify={notify} />
             )}
@@ -178,11 +182,21 @@ function Empty({ text }: { text: string }) {
 function Overview({
   data,
   setTab,
+  userName,
 }: {
   data: Data;
   setTab: (s: string) => void;
+  userName: string;
 }) {
   const [chartRange, setChartRange] = useState<"7d" | "30d" | "6m" | "1y">("7d");
+
+  // Time-sensitive greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos días";
+    if (hour < 19) return "Buenas tardes";
+    return "Buenas noches";
+  }, []);
 
   // Revenue calculations
   const paid = data.reservations.filter((r) => r.payment_status === "paid");
@@ -269,8 +283,11 @@ function Overview({
     <>
       {/* Operational summary */}
       <div className="admin-panel">
-        <p className="admin-kicker">Hoy</p>
-        <p style={{ fontSize: "0.9rem", marginTop: "0.3rem", lineHeight: 1.5 }}>
+        <p className="admin-kicker">{greeting}{userName ? `, ${userName}` : ""}</p>
+        <h2 style={{ fontSize: "1.3rem", marginTop: "0.3rem" }}>
+          Todo empieza <em style={{ color: "var(--admin-accent)" }}>aquí.</em>
+        </h2>
+        <p className="admin-muted" style={{ marginTop: "0.5rem", fontSize: "0.85rem", lineHeight: 1.5 }}>
           {upcomingDates > 0 ? (
             <>Tienes <strong style={{ color: "var(--admin-accent)" }}>{upcomingDates} salida{upcomingDates !== 1 ? "s" : ""}</strong> próxima{upcomingDates !== 1 ? "s" : ""}.</>
           ) : (
