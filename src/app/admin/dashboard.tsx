@@ -269,7 +269,7 @@ function Overview({
     <>
       {/* Operational summary */}
       <div className="admin-panel">
-        <p className="admin-kicker">Resumen</p>
+        <p className="admin-kicker">Hoy</p>
         <p style={{ fontSize: "0.9rem", marginTop: "0.3rem", lineHeight: 1.5 }}>
           {upcomingDates > 0 ? (
             <>Tienes <strong style={{ color: "var(--admin-accent)" }}>{upcomingDates} salida{upcomingDates !== 1 ? "s" : ""}</strong> próxima{upcomingDates !== 1 ? "s" : ""}.</>
