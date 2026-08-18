@@ -18,16 +18,16 @@ async function seed() {
   // Check if admin user exists
   const existing = await db.execute({
     sql: "SELECT id FROM users WHERE email = ?",
-    args: ["admin@alaraiz.mx"],
+    args: ["Alaraiz@pm.me"],
   });
 
   if (existing.rows.length === 0) {
-    const hash = await hashPassword("cambiame123");
+    const hash = await hashPassword("Recreo1234.");
     await db.execute({
       sql: "INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)",
-      args: ["admin@alaraiz.mx", hash, "Admin Raíz", "admin"],
+      args: ["Alaraiz@pm.me", hash, "Admin Raíz", "admin"],
     });
-    console.log("👤 Admin user created: admin@alaraiz.mx / cambiame123");
+    console.log("👤 Admin user created: Alaraiz@pm.me");
   } else {
     console.log("👤 Admin user already exists.");
   }
