@@ -182,6 +182,8 @@ function Overview({
   data: Data;
   setTab: (s: string) => void;
 }) {
+  const [chartRange, setChartRange] = useState<"7d" | "30d" | "6m" | "1y">("7d");
+
   // Revenue calculations
   const paid = data.reservations.filter((r) => r.payment_status === "paid");
   const totalRevenue = paid.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
@@ -189,36 +191,101 @@ function Overview({
     .filter((r) => r.payment_status !== "paid")
     .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-  // Last 7 days revenue chart data
+  // Chart data based on selected range
   const chartData = useMemo(() => {
-    const days: { label: string; value: number }[] = [];
     const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("es-MX", { weekday: "short" });
-      const dayTotal = paid
-        .filter((r) => String(r.created_at || "").startsWith(key))
-        .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-      days.push({ label, value: dayTotal });
+    const bars: { label: string; value: number }[] = [];
+
+    if (chartRange === "7d") {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        const label = d.toLocaleDateString("es-MX", { weekday: "short" });
+        const total = paid
+          .filter((r) => String(r.created_at || "").startsWith(key))
+          .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        bars.push({ label, value: total });
+      }
+    } else if (chartRange === "30d") {
+      // Group by week (4 weeks + current partial)
+      for (let week = 4; week >= 0; week--) {
+        const weekEnd = new Date(now);
+        weekEnd.setDate(weekEnd.getDate() - week * 7);
+        const weekStart = new Date(weekEnd);
+        weekStart.setDate(weekStart.getDate() - 6);
+        const startKey = weekStart.toISOString().slice(0, 10);
+        const endKey = weekEnd.toISOString().slice(0, 10);
+        const label = `${weekStart.getDate()}–${weekEnd.getDate()} ${weekEnd.toLocaleDateString("es-MX", { month: "short" })}`;
+        const total = paid
+          .filter((r) => {
+            const d = String(r.created_at || "").slice(0, 10);
+            return d >= startKey && d <= endKey;
+          })
+          .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        bars.push({ label, value: total });
+      }
+    } else if (chartRange === "6m") {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = d.toLocaleDateString("es-MX", { month: "short" });
+        const total = paid
+          .filter((r) => String(r.created_at || "").startsWith(key))
+          .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        bars.push({ label, value: total });
+      }
+    } else {
+      // 1y — monthly for 12 months
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = d.toLocaleDateString("es-MX", { month: "short" });
+        const total = paid
+          .filter((r) => String(r.created_at || "").startsWith(key))
+          .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        bars.push({ label, value: total });
+      }
     }
-    return days;
-  }, [paid]);
+
+    return bars;
+  }, [paid, chartRange]);
 
   const chartMax = Math.max(...chartData.map((d) => d.value), 1);
+  const rangeRevenue = chartData.reduce((s, d) => s + d.value, 0);
+
+  // Quick stats for operational message
+  const pendingReservations = data.reservations.filter((r) => r.payment_status !== "paid").length;
+  const upcomingDates = data.dates.filter((d) => String(d.date) >= new Date().toISOString().slice(0, 10)).length;
+
+  const rangeOptions: [typeof chartRange, string][] = [
+    ["7d", "7 días"],
+    ["30d", "Mes"],
+    ["6m", "6 meses"],
+    ["1y", "Año"],
+  ];
 
   return (
     <>
+      {/* Operational summary */}
       <div className="admin-panel">
-        <p className="admin-kicker">Buenos días</p>
-        <h2 style={{ fontSize: "1.4rem", marginTop: "0.3rem" }}>
-          La ciudad se <em style={{ color: "var(--admin-accent)" }}>gestiona aquí.</em>
-        </h2>
-        <p className="admin-muted" style={{ marginTop: "0.5rem" }}>
-          Actualiza la landing, organiza tus salidas y gestiona tus clientes.
+        <p className="admin-kicker">Resumen</p>
+        <p style={{ fontSize: "0.9rem", marginTop: "0.3rem", lineHeight: 1.5 }}>
+          {upcomingDates > 0 ? (
+            <>Tienes <strong style={{ color: "var(--admin-accent)" }}>{upcomingDates} salida{upcomingDates !== 1 ? "s" : ""}</strong> próxima{upcomingDates !== 1 ? "s" : ""}.</>
+          ) : (
+            <>No hay salidas programadas.</>
+          )}
+          {pendingReservations > 0 && (
+            <> Hay <strong style={{ color: "#e95" }}>{pendingReservations} reserva{pendingReservations !== 1 ? "s" : ""}</strong> pendiente{pendingReservations !== 1 ? "s" : ""} de pago.</>
+          )}
+          {data.customers.length > 0 && (
+            <> {data.customers.length} cliente{data.customers.length !== 1 ? "s" : ""} en tu CRM.</>
+          )}
         </p>
       </div>
+
+      {/* Quick stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         {(
           [
@@ -242,53 +309,71 @@ function Overview({
       </div>
 
       {/* Revenue card with chart */}
-      <div
-        className="admin-panel"
-        style={{ cursor: "pointer" }}
-        onClick={() => setTab("payments")}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+      <div className="admin-panel">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
           <div>
             <p className="admin-kicker">Ingresos</p>
             <h3 style={{ fontSize: "1.6rem", margin: "0.2rem 0 0" }}>
               ${totalRevenue.toLocaleString("es-MX")}
-              <span className="admin-muted" style={{ fontSize: "0.75rem", marginLeft: "0.5rem" }}>cobrado</span>
+              <span className="admin-muted" style={{ fontSize: "0.75rem", marginLeft: "0.5rem" }}>total cobrado</span>
             </h3>
+            {pendingRevenue > 0 && (
+              <p style={{ fontSize: "0.8rem", color: "#e95", marginTop: "0.2rem" }}>
+                ${pendingRevenue.toLocaleString("es-MX")} pendiente
+              </p>
+            )}
           </div>
-          <div style={{ textAlign: "right" }}>
-            <span className="admin-muted" style={{ fontSize: "0.72rem", display: "block" }}>Pendiente</span>
-            <strong style={{ fontSize: "1.1rem", color: "#e95" }}>
-              ${pendingRevenue.toLocaleString("es-MX")}
-            </strong>
+          {/* Range selector pills */}
+          <div style={{ display: "flex", gap: "0.3rem" }}>
+            {rangeOptions.map(([key, label]) => (
+              <button
+                key={key}
+                className="admin-pill"
+                onClick={(e) => { e.stopPropagation(); setChartRange(key); }}
+                style={{
+                  cursor: "pointer",
+                  background: chartRange === key ? "var(--admin-accent)" : "transparent",
+                  color: chartRange === key ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+                  border: "1px solid var(--admin-border)",
+                  borderRadius: 20,
+                  padding: "0.25rem 0.6rem",
+                  fontSize: "0.68rem",
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Mini bar chart — last 7 days */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.4rem", height: 64 }}>
-          {chartData.map((day, i) => (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+        {/* Period revenue */}
+        {rangeRevenue > 0 && rangeRevenue !== totalRevenue && (
+          <p className="admin-muted" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
+            ${rangeRevenue.toLocaleString("es-MX")} en este periodo
+          </p>
+        )}
+
+        {/* Bar chart */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: chartData.length > 7 ? "0.2rem" : "0.4rem", height: 72 }}>
+          {chartData.map((bar, i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.2rem" }}>
               <div
                 style={{
                   width: "100%",
-                  maxWidth: 32,
-                  height: `${Math.max((day.value / chartMax) * 48, 3)}px`,
-                  background: day.value > 0
-                    ? "var(--admin-accent)"
-                    : "var(--admin-border)",
+                  maxWidth: chartData.length > 7 ? 24 : 32,
+                  height: `${Math.max((bar.value / chartMax) * 52, 3)}px`,
+                  background: bar.value > 0 ? "var(--admin-accent)" : "var(--admin-border)",
                   borderRadius: 4,
                   transition: "height 0.3s",
                 }}
-                title={`$${day.value.toLocaleString("es-MX")}`}
+                title={`$${bar.value.toLocaleString("es-MX")}`}
               />
-              <span className="admin-muted" style={{ fontSize: "0.6rem", textTransform: "capitalize" }}>
-                {day.label}
+              <span className="admin-muted" style={{ fontSize: chartData.length > 7 ? "0.52rem" : "0.6rem", textTransform: "capitalize", whiteSpace: "nowrap" }}>
+                {bar.label}
               </span>
             </div>
           ))}
         </div>
-        <p className="admin-muted" style={{ fontSize: "0.7rem", marginTop: "0.5rem", textAlign: "right" }}>
-          Últimos 7 días · clic para ver detalle
-        </p>
       </div>
     </>
   );
