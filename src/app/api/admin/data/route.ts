@@ -12,7 +12,7 @@ export async function GET() {
     const isAdmin = user.role === "admin";
 
     // Base queries available to all roles
-    const [experiences, dates, facilitators] = await Promise.all([
+    const [experiences, dates, facilitators, collections] = await Promise.all([
       db.execute("SELECT * FROM experiences ORDER BY created_at DESC"),
       db.execute(
         `SELECT a.*, e.title FROM availability a
@@ -20,6 +20,7 @@ export async function GET() {
          ORDER BY a.date ASC`
       ),
       db.execute("SELECT * FROM facilitators ORDER BY created_at DESC"),
+      db.execute("SELECT * FROM collections WHERE is_active = 1 ORDER BY sort_order ASC, name ASC"),
     ]);
 
     // Admin-only data
@@ -50,6 +51,7 @@ export async function GET() {
       events: events.rows,
       folders: folders.rows,
       facilitators: facilitators.rows,
+      collections: collections.rows,
     });
   } catch (error) {
     return NextResponse.json(

@@ -3,7 +3,7 @@ import { FormEvent, useRef, useState } from "react";
 
 type Row = Record<string, string | number | null>;
 type Props = {
-  data: { experiences: Row[]; facilitators: Row[] };
+  data: { experiences: Row[]; facilitators: Row[]; collections: Row[] };
   refresh: () => void;
   notify: (message: string) => void;
 };
@@ -235,9 +235,11 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 Colección
                 <select name="collection" defaultValue={String(active.collection || "")}>
                   <option value="">— Ninguna —</option>
-                  <option value="Colección II">Colección II</option>
-                  <option value="Colección III">Colección III</option>
-                  <option value="Próximamente">Próximamente</option>
+                  {data.collections.map((col) => (
+                    <option key={String(col.id)} value={String(col.name)}>
+                      {String(col.name)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>

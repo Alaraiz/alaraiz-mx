@@ -4,6 +4,7 @@ import ExperienceManager from "./experience-manager";
 import FacilitatorManager from "./facilitator-manager";
 import CrmManager from "./crm-manager";
 import UserManager from "./user-manager";
+import CollectionManager from "./collection-manager";
 
 type Row = Record<string, string | number | null>;
 type Data = {
@@ -14,6 +15,7 @@ type Data = {
   events: Row[];
   folders: Row[];
   facilitators: Row[];
+  collections: Row[];
 };
 type Notice = { message: string; tone: "success" | "error" };
 type Notify = (message: string, tone?: Notice["tone"]) => void;
@@ -42,6 +44,7 @@ export default function AdminDashboard() {
     events: [],
     folders: [],
     facilitators: [],
+    collections: [],
   });
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -807,7 +810,7 @@ function Payments({ data }: { data: Data }) {
 }
 
 function Settings({ notify, role }: { notify: (s: string) => void; role: string }) {
-  const [subTab, setSubTab] = useState<"security" | "users">("security");
+  const [subTab, setSubTab] = useState<"security" | "users" | "collections">("security");
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -857,6 +860,23 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
             Usuarios
           </button>
         )}
+        {role === "admin" && (
+          <button
+            className="admin-pill"
+            onClick={() => setSubTab("collections")}
+            style={{
+              cursor: "pointer",
+              background: subTab === "collections" ? "var(--admin-accent)" : "transparent",
+              color: subTab === "collections" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
+              border: "1px solid var(--admin-border)",
+              borderRadius: 20,
+              padding: "0.3rem 0.7rem",
+              fontSize: "0.75rem",
+            }}
+          >
+            Colecciones
+          </button>
+        )}
       </div>
 
       {/* Security sub-tab */}
@@ -878,6 +898,9 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
 
       {/* Users sub-tab (admin only) */}
       {subTab === "users" && role === "admin" && <UserManager notify={notify} />}
+
+      {/* Collections sub-tab (admin only) */}
+      {subTab === "collections" && role === "admin" && <CollectionManager notify={notify} />}
     </div>
   );
 }
