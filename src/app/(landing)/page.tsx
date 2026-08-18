@@ -348,6 +348,7 @@ export default function HomePage() {
             </div>
             <span className="folio"><span className="lng-es">Desliza para recorrerlas</span><span className="lng-en">Swipe to explore</span></span>
           </div>
+          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(24px,4vh,40px)" }}><span className="lng-es">Cada línea es un laboratorio con su propio anfitrión y su propio arco —contexto, proceso, catarsis. Desliza para recorrerlas.</span><span className="lng-en">Each line is a lab with its own host and its own arc — context, process, catharsis. Swipe to explore them.</span></p>
 
           <div className="rec-rail" id="recRail">
           {/* Dynamic experience cards from CMS */}
