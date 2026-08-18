@@ -166,6 +166,8 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
           <p className="admin-empty">No hay facilitadores creados todavía.</p>
         )}
       </div>
+
+      {/* Modal */}
       {active && (
         <div className="admin-modal-backdrop" onClick={closeModal}>
           <form
@@ -179,65 +181,90 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
             <p className="admin-kicker">
               {editing ? "Editar facilitador" : "Nuevo facilitador"}
             </p>
-            <h3>{editing ? String(editing.name) : "Crear facilitador"}</h3>
+            <h3>{editing ? String(editing.name) : "Completa el perfil"}</h3>
+
+            {/* Photo — full width, click to upload */}
+            <div
+              style={{
+                position: "relative",
+                borderRadius: 8,
+                overflow: "hidden",
+                background: "var(--admin-surface-2)",
+                cursor: "pointer",
+                height: 140,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Foto"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1, transition: "opacity 0.2s" }}
+                />
+              ) : (
+                <div style={{ textAlign: "center", padding: "1rem" }}>
+                  <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.3rem" }}>📷</span>
+                  <span className="admin-muted" style={{ fontSize: "0.8rem" }}>Haz clic para subir una foto</span>
+                </div>
+              )}
+              {photoUrl && (
+                <div style={{
+                  position: "absolute", inset: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(0,0,0,0.35)",
+                  opacity: 0, transition: "opacity 0.2s",
+                }} className="admin-img-overlay">
+                  <span style={{ color: "#fff", fontSize: "0.8rem", fontWeight: 500 }}>
+                    {uploading ? "Subiendo…" : "Cambiar foto"}
+                  </span>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
+              />
+            </div>
+
+            {/* Fields */}
             <div className="admin-form-grid">
               <label>
-                Nombre
-                <input name="name" defaultValue={String(active.name || "")} required />
+                Nombre completo
+                <input name="name" defaultValue={String(active.name || "")} required placeholder="Ej. Carlos Mendoza" />
               </label>
               <label>
-                Rol / Especialidad
+                Especialidad
                 <input name="role" defaultValue={String(active.role || "")} placeholder="Ej. Sommelier, Chef, Guía" />
               </label>
               <label>
                 Colección
                 <select name="collection" defaultValue={String(active.collection || "")}>
-                  <option value="">— Sin colección —</option>
+                  <option value="">— Ninguna —</option>
                   <option value="Colección II">Colección II</option>
                   <option value="Colección III">Colección III</option>
                   <option value="Próximamente">Próximamente</option>
                 </select>
               </label>
               <label>
-                Foto de perfil
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflow: "hidden" }}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ minWidth: 0, maxWidth: "100%" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                  />
-                  {uploading && <span className="admin-muted" style={{ fontSize: "0.75rem", flexShrink: 0 }}>Subiendo…</span>}
-                </div>
-                {photoUrl && (
-                  <img
-                    src={photoUrl}
-                    alt="Preview"
-                    style={{ marginTop: "0.5rem", maxHeight: 100, borderRadius: 6, objectFit: "cover" }}
-                  />
-                )}
-                <input
-                  type="text"
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="URL de foto (se llena automáticamente al subir)"
-                  style={{ marginTop: "0.4rem", fontSize: "0.8rem", opacity: 0.7 }}
-                />
+                Frase destacada
+                <input name="reclaims" defaultValue={String(active.reclaims || "")} placeholder="Ej. 10 años explorando la ciudad" />
               </label>
             </div>
             <label>
-              Reclaims / Frase
-              <input name="reclaims" defaultValue={String(active.reclaims || "")} placeholder="Ej. Caminante experto desde 2010" />
+              Biografía
+              <textarea name="bio" rows={4} defaultValue={String(active.bio || "")} placeholder="Una breve descripción que aparecerá en su perfil" />
             </label>
-            <label>
-              Bio
-              <textarea name="bio" rows={4} defaultValue={String(active.bio || "")} placeholder="Breve biografía del facilitador" />
-            </label>
-            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
+
+            {/* Publish toggle */}
+            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}>
               <input
                 name="isPublished"
                 type="checkbox"
@@ -245,6 +272,8 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
               />
               Publicar en la landing
             </label>
+
+            {/* Actions */}
             <div className="admin-form-actions">
               {editing && (
                 <button
@@ -253,14 +282,16 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
                   onClick={handleDelete}
                   disabled={deleting}
                 >
-                  {deleting ? "Eliminando…" : "Eliminar facilitador"}
+                  {deleting ? "Eliminando…" : "Eliminar"}
                 </button>
               )}
               <div style={{ flex: 1 }} />
               <button type="button" onClick={closeModal}>
                 Cancelar
               </button>
-              <button className="admin-primary">Guardar cambios</button>
+              <button className="admin-primary">
+                {editing ? "Guardar cambios" : "Crear facilitador"}
+              </button>
             </div>
           </form>
         </div>

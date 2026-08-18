@@ -171,6 +171,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
           <p className="admin-empty">No hay experiencias creadas todavía.</p>
         )}
       </div>
+
+      {/* Modal */}
       {active && (
         <div className="admin-modal-backdrop" onClick={closeModal}>
           <form
@@ -184,30 +186,72 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
             <p className="admin-kicker">
               {editing ? "Editar experiencia" : "Nueva experiencia"}
             </p>
-            <h3>{editing?.title || "Crear experiencia"}</h3>
+            <h3>{editing ? String(editing.title) : "Completa los datos"}</h3>
+
+            {/* Cover image — full width */}
+            <div
+              style={{
+                position: "relative",
+                borderRadius: 8,
+                overflow: "hidden",
+                background: "var(--admin-surface-2)",
+                cursor: "pointer",
+              }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <img
+                src={imageUrl}
+                alt="Portada"
+                style={{ width: "100%", height: 140, objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1, transition: "opacity 0.2s" }}
+              />
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.35)",
+                opacity: 0, transition: "opacity 0.2s",
+              }} className="admin-img-overlay">
+                <span style={{ color: "#fff", fontSize: "0.8rem", fontWeight: 500 }}>
+                  {uploading ? "Subiendo…" : "Cambiar imagen"}
+                </span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
+              />
+            </div>
+
+            {/* Core fields */}
             <div className="admin-form-grid">
               <label>
-                Nombre
-                <input name="title" defaultValue={String(active.title || "")} required />
+                Nombre de la experiencia
+                <input name="title" defaultValue={String(active.title || "")} required placeholder="Ej. Caminata al amanecer" />
               </label>
               <label>
                 Etiqueta
-                <input name="tag" defaultValue={String(active.tag || "")} />
+                <input name="tag" defaultValue={String(active.tag || "")} placeholder="Ej. Naturaleza, Gastronomía" />
               </label>
               <label>
                 Duración
-                <input name="duration" defaultValue={String(active.duration || "")} />
+                <input name="duration" defaultValue={String(active.duration || "")} placeholder="Ej. 3 horas" />
               </label>
               <label>
-                Precio MXN
+                Precio por persona (MXN)
                 <input
                   name="price"
                   type="number"
+                  min="0"
                   defaultValue={active.price == null ? "" : String(active.price)}
+                  placeholder="0"
                 />
               </label>
               <label>
-                Cupo total
+                Cupo máximo
                 <input
                   name="capacity"
                   type="number"
@@ -216,48 +260,9 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 />
               </label>
               <label>
-                Imagen de portada
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", overflow: "hidden" }}>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ minWidth: 0, maxWidth: "100%" }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                  />
-                  {uploading && <span className="admin-muted" style={{ fontSize: "0.75rem", flexShrink: 0 }}>Subiendo…</span>}
-                </div>
-                {imageUrl && (
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    style={{ marginTop: "0.5rem", maxHeight: 120, borderRadius: 6, objectFit: "cover" }}
-                  />
-                )}
-                <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="URL de imagen (se llena automáticamente al subir)"
-                  style={{ marginTop: "0.4rem", fontSize: "0.8rem", opacity: 0.7 }}
-                />
-              </label>
-              <label>
-                Colección
-                <select name="collection" defaultValue={String(active.collection || "")}>
-                  <option value="">— Sin colección —</option>
-                  <option value="Colección II">Colección II</option>
-                  <option value="Colección III">Colección III</option>
-                  <option value="Próximamente">Próximamente</option>
-                </select>
-              </label>
-              <label>
                 Anfitrión
                 <select name="facilitatorId" defaultValue={String(active.facilitator_id || "")}>
-                  <option value="">— Sin anfitrión —</option>
+                  <option value="">— Sin asignar —</option>
                   {data.facilitators.map((f) => (
                     <option key={String(f.id)} value={String(f.id)}>
                       {f.name}
@@ -265,13 +270,27 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   ))}
                 </select>
               </label>
+            </div>
+
+            {/* Detail fields */}
+            <p className="admin-kicker" style={{ marginTop: "0.5rem" }}>Detalles de la landing</p>
+            <div className="admin-form-grid">
               <label>
-                Ritmo
-                <input name="pace" defaultValue={String(active.pace || "")} placeholder="Ej. Con pausas, Tranquilo" />
+                Colección
+                <select name="collection" defaultValue={String(active.collection || "")}>
+                  <option value="">— Ninguna —</option>
+                  <option value="Colección II">Colección II</option>
+                  <option value="Colección III">Colección III</option>
+                  <option value="Próximamente">Próximamente</option>
+                </select>
               </label>
               <label>
-                Zona
-                <input name="zone" defaultValue={String(active.zone || "")} placeholder="Ej. San Rafael → Centro" />
+                Ritmo
+                <input name="pace" defaultValue={String(active.pace || "")} placeholder="Ej. Tranquilo, Con pausas" />
+              </label>
+              <label>
+                Zona de la experiencia
+                <input name="zone" defaultValue={String(active.zone || "")} placeholder="Ej. Centro → San Rafael" />
               </label>
               <label>
                 Idioma
@@ -279,14 +298,16 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               </label>
             </div>
             <label>
-              Incluye
-              <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Ej. Picnic incluido · Caminata en bosque" />
+              ¿Qué incluye?
+              <textarea name="includes" rows={2} defaultValue={String(active.includes || "")} placeholder="Separa cada item con · Ej: Picnic · Caminata guiada · Fotografía" />
             </label>
             <label>
               Descripción
-              <textarea name="description" rows={5} defaultValue={String(active.description || "")} />
+              <textarea name="description" rows={4} defaultValue={String(active.description || "")} placeholder="Describe la experiencia para la página de detalle" />
             </label>
-            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center" }}>
+
+            {/* Publish toggle */}
+            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}>
               <input
                 name="isPublished"
                 type="checkbox"
@@ -294,6 +315,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               />
               Publicar en la landing
             </label>
+
+            {/* Actions */}
             <div className="admin-form-actions">
               {editing && (
                 <button
@@ -302,14 +325,16 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   onClick={handleDelete}
                   disabled={deleting}
                 >
-                  {deleting ? "Eliminando…" : "Eliminar experiencia"}
+                  {deleting ? "Eliminando…" : "Eliminar"}
                 </button>
               )}
               <div style={{ flex: 1 }} />
               <button type="button" onClick={closeModal}>
                 Cancelar
               </button>
-              <button className="admin-primary">Guardar cambios</button>
+              <button className="admin-primary">
+                {editing ? "Guardar cambios" : "Crear experiencia"}
+              </button>
             </div>
           </form>
         </div>

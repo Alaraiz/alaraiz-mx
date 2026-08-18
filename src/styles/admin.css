@@ -508,6 +508,16 @@
   text-align: center;
 }
 
+/* Image upload overlay */
+.admin-img-overlay {
+  opacity: 0 !important;
+  transition: opacity 0.2s;
+}
+
+*:hover > .admin-img-overlay {
+  opacity: 1 !important;
+}
+
 .admin-pill {
   font-size: 0.62rem;
   text-transform: uppercase;
