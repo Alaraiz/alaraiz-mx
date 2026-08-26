@@ -12,20 +12,33 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [creating, setCreating] = useState(false);
   const [imageUrl, setImageUrl] = useState("/assets/exp-mesa.jpg");
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [contentLang, setContentLang] = useState<"es" | "en">("es");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const active = editing || (creating ? {} : null);
 
-  async function handleImageUpload(file: File) {
+  function parseGalleryImages(value: unknown) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    try {
+      const parsed = JSON.parse(String(value));
+      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function uploadImage(file: File) {
     if (!file.type.startsWith("image/")) {
       notify("Solo se permiten archivos de imagen.");
-      return;
+      return null;
     }
     if (file.size > 8 * 1024 * 1024) {
       notify("El archivo excede el límite de 8 MB.");
-      return;
+      return null;
     }
     setUploading(true);
     try {
@@ -34,25 +47,63 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
       const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al subir imagen.");
-      setImageUrl(data.url);
+      return String(data.url);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Error al subir imagen.");
+      return null;
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleCoverUpload(file: File) {
+    const url = await uploadImage(file);
+    if (!url) return;
+    setImageUrl(url);
+    setGalleryImages((current) => [url, ...current.filter((item) => item !== url)]);
+  }
+
+  async function handleGalleryUpload(files: FileList | File[]) {
+    const uploaded: string[] = [];
+    for (const file of Array.from(files)) {
+      const url = await uploadImage(file);
+      if (url) uploaded.push(url);
+    }
+    if (!uploaded.length) return;
+    setGalleryImages((current) => Array.from(new Set([...current, ...uploaded])));
+    if (!imageUrl || imageUrl === "/assets/exp-mesa.jpg") setImageUrl(uploaded[0]);
+  }
+
+  function removeGalleryImage(url: string) {
+    setGalleryImages((current) => {
+      const next = current.filter((item) => item !== url);
+      if (imageUrl === url) setImageUrl(next[0] || "/assets/exp-mesa.jpg");
+      return next;
+    });
+  }
+
+  function makeCoverImage(url: string) {
+    setImageUrl(url);
+    setGalleryImages((current) => [url, ...current.filter((item) => item !== url)]);
   }
 
   function startCreating() {
     setEditing(null);
     setCreating(true);
     setImageUrl("/assets/exp-mesa.jpg");
+    setGalleryImages([]);
     setContentLang("es");
   }
 
   function startEditing(experience: Row) {
     setCreating(false);
     setEditing(experience);
-    setImageUrl(String(experience.cover_image_url || "/assets/exp-mesa.jpg"));
+    const cover = String(experience.cover_image_url || "/assets/exp-mesa.jpg");
+    setImageUrl(cover);
+    setGalleryImages(
+      Array.from(new Set([cover, ...parseGalleryImages(experience.gallery_images_json)]))
+        .filter((url) => url && url !== "/assets/exp-mesa.jpg")
+    );
     setContentLang("es");
   }
 
@@ -102,6 +153,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
         body: JSON.stringify({
           ...values,
           coverImageUrl: imageUrl,
+          galleryImages: Array.from(new Set([imageUrl, ...galleryImages]))
+            .filter((url) => url && url !== "/assets/exp-mesa.jpg"),
           capacity,
           price,
           isPublished: values.isPublished === "on",
@@ -322,7 +375,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 e.preventDefault();
                 e.currentTarget.style.borderColor = "var(--admin-border)";
                 const file = e.dataTransfer.files?.[0];
-                if (file) handleImageUpload(file);
+                if (file) handleCoverUpload(file);
               }}
             >
               {imageUrl && imageUrl !== "/assets/exp-mesa.jpg" ? (
@@ -359,9 +412,59 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
+                  if (file) handleCoverUpload(file);
                 }}
               />
+            </div>
+
+            <div className="admin-gallery-editor">
+              <div className="admin-panel-head">
+                <div>
+                  <p className="admin-kicker" style={{ margin: 0 }}>Galería</p>
+                  <p className="admin-muted" style={{ margin: "0.2rem 0 0" }}>
+                    La primera imagen se usa como portada. En la landing rotan automáticamente.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="admin-small"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? "Subiendo..." : "+ Agregar fotos"}
+                </button>
+              </div>
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  if (e.target.files?.length) void handleGalleryUpload(e.target.files);
+                  e.currentTarget.value = "";
+                }}
+              />
+              {galleryImages.length > 0 ? (
+                <div className="admin-gallery-grid">
+                  {galleryImages.map((url) => (
+                    <div className="admin-gallery-thumb" key={url}>
+                      <img src={url} alt="" />
+                      {url === imageUrl && <span className="admin-gallery-cover">Portada</span>}
+                      <div className="admin-gallery-actions">
+                        <button type="button" onClick={() => makeCoverImage(url)}>
+                          Portada
+                        </button>
+                        <button type="button" onClick={() => removeGalleryImage(url)}>
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="admin-empty">Aún no hay fotos extra para esta experiencia.</p>
+              )}
             </div>
 
             <label className="admin-checkbox-row">

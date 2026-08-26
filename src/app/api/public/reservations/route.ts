@@ -186,10 +186,12 @@ export async function POST(request: NextRequest) {
     // Create checkout via payment gateway
     const gateway = getGateway();
 
-    // Determine base URL: prefer env var, then derive from request host
+    // In local development, keep the redirect local even when NEXT_PUBLIC_SITE_URL points to production.
     const host = request.headers.get("host");
     const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (host ? `${proto}://${host}` : "http://localhost:3000");
+    const requestBaseUrl = host ? `${proto}://${host}` : "http://localhost:3000";
+    const isLocalRequest = host?.includes("localhost") || host?.includes("127.0.0.1");
+    const baseUrl = isLocalRequest ? requestBaseUrl : process.env.NEXT_PUBLIC_SITE_URL || requestBaseUrl;
 
     const checkout = await gateway.createCheckout({
       amount: totalAmount,

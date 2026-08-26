@@ -28,6 +28,7 @@ export async function migrate() {
       price REAL,
       capacity INTEGER NOT NULL DEFAULT 12,
       cover_image_url TEXT,
+      gallery_images_json TEXT DEFAULT '[]',
       is_published INTEGER NOT NULL DEFAULT 0,
       collection TEXT,
       pace TEXT,
@@ -168,6 +169,12 @@ export async function migrate() {
     } catch {
       // Column already exists — ignore
     }
+  }
+
+  try {
+    await db.execute("ALTER TABLE experiences ADD COLUMN gallery_images_json TEXT DEFAULT '[]'");
+  } catch {
+    // Column already exists — ignore
   }
 
   const reservationColumns = [

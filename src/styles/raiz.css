@@ -1243,6 +1243,17 @@ h2 em { font-style: italic; color: var(--accent); }
   transition: transform 1s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .rec-card:hover .rec-media img { transform: scale(1.05); }
+.rec-gallery {
+  position: absolute;
+  inset: 0;
+}
+.rec-gallery img {
+  opacity: 0;
+  transition: opacity 1s ease, transform 1s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.rec-gallery img.is-active {
+  opacity: 1;
+}
 .rec-roman {
   position: absolute;
   top: 10px;

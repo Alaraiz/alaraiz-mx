@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const result = await db.execute(
       `SELECT e.id, e.slug, e.title, e.tag, e.description, e.duration, e.price,
-              e.capacity, e.cover_image_url, e.collection, e.pace, e.zone,
+              e.capacity, e.cover_image_url, e.gallery_images_json, e.collection, e.pace, e.zone,
               e.language, e.includes, e.facilitator_id,
               e.title_en, e.tag_en, e.description_en, e.includes_en,
               f.name AS facilitator_name, f.role AS facilitator_role,

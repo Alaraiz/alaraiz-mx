@@ -106,6 +106,7 @@ export interface Experience {
   price: number | null;
   capacity: number;
   cover_image_url: string | null;
+  gallery_images_json: string | null;
   collection: string | null;
   pace: string | null;
   zone: string | null;
@@ -168,6 +169,24 @@ function getInitials(name: string | null): string {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+function experienceImages(exp: Experience): string[] {
+  const images = new Set<string>();
+  if (exp.cover_image_url) images.add(exp.cover_image_url);
+  if (exp.gallery_images_json) {
+    try {
+      const parsed = JSON.parse(exp.gallery_images_json);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item) => {
+          if (typeof item === "string" && item.trim()) images.add(item);
+        });
+      }
+    } catch {
+      // Keep the cover image if legacy gallery JSON is malformed.
+    }
+  }
+  return Array.from(images);
 }
 
 /** Map pace string to dot count (1-3) */
@@ -235,6 +254,7 @@ export default function LandingClient({
   const [lang, setLang] = useState<"es" | "en">("es");
   const [menuOpen, setMenuOpen] = useState(false);
   const [fontScale, setFontScale] = useState<"base" | "large" | "xlarge">("base");
+  const [galleryTick, setGalleryTick] = useState(0);
   const [leadForm, setLeadForm] = useState({
     name: "",
     email: "",
@@ -252,6 +272,15 @@ export default function LandingClient({
   useCarousel();
 
   useEffect(() => { setHeroMounted(true); }, []);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+    const timer = window.setInterval(() => {
+      setGalleryTick((value) => value + 1);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("raiz-font-scale");
@@ -565,11 +594,22 @@ export default function LandingClient({
                 const initials = getInitials(exp.facilitator_name);
                 const allSlots = availabilityByExperience[exp.id] || [];
                 const slots = allSlots.slice(0, 3);
+                const images = experienceImages(exp);
+                const activeImage = images.length ? galleryTick % images.length : 0;
                 return (
                   <article key={exp.id} className="rec-card" data-c={color}>
                     <div className="rec-media">
-                      {exp.cover_image_url && (
-                        <img src={exp.cover_image_url} alt={exp.title} />
+                      {images.length > 0 && (
+                        <div className="rec-gallery" aria-hidden="true">
+                          {images.map((url, imageIndex) => (
+                            <img
+                              key={url}
+                              src={url}
+                              alt=""
+                              className={imageIndex === activeImage ? "is-active" : ""}
+                            />
+                          ))}
+                        </div>
                       )}
                       <span className="rec-roman">{toRoman(idx + 1)}</span>
                       {exp.collection && (

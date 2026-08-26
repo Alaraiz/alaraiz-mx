@@ -13,12 +13,12 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { title, tag, description, duration, price, capacity, coverImageUrl, isPublished, collection, facilitatorId, pace, zone, language, includes, titleEn, tagEn, descriptionEn, includesEn } = body;
+    const { title, tag, description, duration, price, capacity, coverImageUrl, galleryImages, isPublished, collection, facilitatorId, pace, zone, language, includes, titleEn, tagEn, descriptionEn, includesEn } = body;
 
     await db.execute({
       sql: `UPDATE experiences SET
               title = ?, tag = ?, description = ?, duration = ?,
-              price = ?, capacity = ?, cover_image_url = ?,
+              price = ?, capacity = ?, cover_image_url = ?, gallery_images_json = ?,
               is_published = ?, collection = ?, facilitator_id = ?,
               pace = ?, zone = ?, language = ?, includes = ?,
               title_en = ?, tag_en = ?, description_en = ?, includes_en = ?,
@@ -27,6 +27,7 @@ export async function PUT(
       args: [
         title, tag || null, description || null, duration || null,
         price ?? null, capacity || 12, coverImageUrl || null,
+        JSON.stringify(Array.isArray(galleryImages) ? galleryImages.filter(Boolean) : []),
         isPublished ? 1 : 0, collection || null, facilitatorId || null,
         pace || null, zone || null, language || "ES / EN", includes || null,
         titleEn || null, tagEn || null, descriptionEn || null, includesEn || null,

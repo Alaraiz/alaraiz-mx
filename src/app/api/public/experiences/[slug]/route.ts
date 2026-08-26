@@ -19,7 +19,7 @@ export async function GET(
   try {
     const result = await db.execute({
       sql: `SELECT e.id, e.slug, e.title, e.tag, e.description, e.duration, e.price,
-                   e.capacity, e.cover_image_url, e.collection, e.pace, e.zone,
+                   e.capacity, e.cover_image_url, e.gallery_images_json, e.collection, e.pace, e.zone,
                    e.language, e.includes, e.facilitator_id
             FROM experiences e
             WHERE e.slug = ? AND e.is_published = 1
