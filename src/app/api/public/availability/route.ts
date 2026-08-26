@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
               JOIN experiences e ON e.id = a.experience_id
               WHERE a.experience_id = ? AND a.status = 'open' AND e.is_published = 1
                 AND a.date >= date('now')
+                AND (a.capacity - a.booked) > 0
               ORDER BY a.date ASC, a.time ASC`,
         args: [experienceId],
       });
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
          JOIN experiences e ON e.id = a.experience_id
          WHERE a.status = 'open' AND e.is_published = 1
            AND a.date >= date('now')
+           AND (a.capacity - a.booked) > 0
          ORDER BY a.date ASC, a.time ASC`
       );
     }

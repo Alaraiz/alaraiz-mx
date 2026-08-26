@@ -1276,9 +1276,36 @@ h2 em { font-style: italic; color: var(--accent); }
   margin-top: auto;
 }
 .rs { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; border-bottom: 1px solid var(--rule-hair); }
+.rs-dates {
+  align-items: flex-start;
+  gap: .7rem;
+}
 .rs:last-child { border-bottom: none; }
 .rsk { font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
 .rsv { font-size: 0.8rem; color: var(--ink); }
+.date-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .28rem;
+  max-width: 70%;
+  text-align: right;
+}
+.date-chip {
+  border: 1px solid var(--rule-soft);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: .32em .55em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.date-chip-more {
+  color: var(--ink-dim);
+}
 .meter { display: inline-flex; align-items: center; gap: .35rem; }
 .meter .dots { display: inline-flex; gap: 2px; }
 .meter .dots i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--ink); display: inline-block; }
@@ -1890,7 +1917,10 @@ footer {
   .rec-body { padding: 10px; gap: .35rem; }
   .rec-name { font-size: 1rem; }
   .rec-product { font-size: 0.76rem; -webkit-line-clamp: 2; }
-  .rec-spec { display: none; }
+  .rec-spec { display: block; }
+  .rs { padding: .34rem .55rem; }
+  .date-list { max-width: 66%; gap: .18rem; }
+  .date-chip { font-size: 0.48rem; padding: .28em .45em; }
   .lc-body { padding: 8px; }
   .lc-bio { -webkit-line-clamp: 1; font-size: 0.76rem; }
   .reveal-overlay { padding: clamp(16px, 4vw, 32px); }

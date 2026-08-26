@@ -131,9 +131,21 @@ export interface Facilitator {
   reclaims: string | null;
 }
 
+export interface AvailabilitySlot {
+  id: string;
+  experience_id: string;
+  date: string;
+  time: string | null;
+  capacity: number;
+  booked: number;
+  status: string;
+  remaining?: number;
+}
+
 export interface LandingClientProps {
   initialExperiences: Experience[];
   initialFacilitators: Facilitator[];
+  initialAvailability: AvailabilitySlot[];
   initialContent: ContentMap;
 }
 
@@ -189,6 +201,19 @@ function toRoman(num: number): string {
   return result;
 }
 
+function formatSlotDate(slot: AvailabilitySlot, locale: "es" | "en") {
+  const time = slot.time ? slot.time.slice(0, 5) : "12:00";
+  const date = new Date(`${slot.date}T${time}:00`);
+  if (Number.isNaN(date.getTime())) return slot.date;
+
+  const formatter = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
+    day: "numeric",
+    month: "short",
+  });
+  const dateLabel = formatter.format(date).replace(".", "");
+  return slot.time ? `${dateLabel} · ${time}` : dateLabel;
+}
+
 /**
  * Landing page — full conversion from index.html.
  * Hero with hover-reveal preserved, followed by all original sections.
@@ -196,6 +221,7 @@ function toRoman(num: number): string {
 export default function LandingClient({
   initialExperiences,
   initialFacilitators,
+  initialAvailability,
   initialContent,
 }: LandingClientProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -203,6 +229,7 @@ export default function LandingClient({
   const navRef = useRef<HTMLDivElement>(null);
   const [experiences, setExperiences] = useState<Experience[] | null>(initialExperiences);
   const [facilitators, setFacilitators] = useState<Facilitator[] | null>(initialFacilitators);
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>(initialAvailability);
   const [content, setContent] = useState<ContentMap>(initialContent);
   const [heroMounted, setHeroMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
@@ -303,6 +330,14 @@ export default function LandingClient({
   }, [initialFacilitators.length]);
 
   useEffect(() => {
+    if (initialAvailability.length > 0) return;
+    fetch("/api/public/availability")
+      .then((r) => r.json())
+      .then((data) => setAvailability(data.slots ?? []))
+      .catch(() => setAvailability([]));
+  }, [initialAvailability.length]);
+
+  useEffect(() => {
     if (Object.keys(initialContent).length > 0) return;
     fetch("/api/public/content?pageKey=landing")
       .then((r) => r.json())
@@ -318,6 +353,12 @@ export default function LandingClient({
   ) =>
     content[`landing.${sectionKey}.${fieldKey}.${locale}`] ||
     fallback;
+
+  const availabilityByExperience = availability.reduce<Record<string, AvailabilitySlot[]>>((acc, slot) => {
+    if (!acc[slot.experience_id]) acc[slot.experience_id] = [];
+    acc[slot.experience_id].push(slot);
+    return acc;
+  }, {});
 
   async function submitLead(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -522,6 +563,8 @@ export default function LandingClient({
                 const dots = paceDots(exp.pace);
                 const pace = paceLabel(exp.pace);
                 const initials = getInitials(exp.facilitator_name);
+                const allSlots = availabilityByExperience[exp.id] || [];
+                const slots = allSlots.slice(0, 3);
                 return (
                   <article key={exp.id} className="rec-card" data-c={color}>
                     <div className="rec-media">
@@ -550,6 +593,28 @@ export default function LandingClient({
                         {exp.language && (
                           <div className="rs"><span className="rsk"><span className="lng-es">Idioma</span><span className="lng-en">Language</span></span><span className="rsv">{exp.language}</span></div>
                         )}
+                        <div className="rs rs-dates">
+                          <span className="rsk"><span className="lng-es">Fechas</span><span className="lng-en">Dates</span></span>
+                          <span className="rsv date-list">
+                            {slots.length > 0 ? (
+                              slots.map((slot) => (
+                                <span key={slot.id} className="date-chip">
+                                  <span className="lng-es">{formatSlotDate(slot, "es")}</span>
+                                  <span className="lng-en">{formatSlotDate(slot, "en")}</span>
+                                </span>
+                              )).concat(
+                                allSlots.length > slots.length ? [
+                                  <span key="more" className="date-chip date-chip-more">+{allSlots.length - slots.length}</span>,
+                                ] : []
+                              )
+                            ) : (
+                              <>
+                                <span className="lng-es">Por confirmar</span>
+                                <span className="lng-en">To be confirmed</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
                       </div>
                       <div className="rec-foot">
                         <div className="rec-lead"><span className="lead-avatar">{initials}</span><span className="lead-meta"><span className="lbl"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></span><span className="nm">{exp.facilitator_name || "Por anunciar"}</span></span></div>

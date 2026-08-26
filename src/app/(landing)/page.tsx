@@ -1,4 +1,4 @@
-import LandingClient, { type Experience, type Facilitator } from "./landing-client";
+import LandingClient, { type AvailabilitySlot, type Experience, type Facilitator } from "./landing-client";
 import { contentRowsToMap, type ContentMap } from "@/content-cms/registry";
 import { db, ensureMigrated } from "@/lib/db";
 
@@ -60,6 +60,25 @@ async function loadFacilitators() {
   return toPlainRows<Facilitator>(result.rows as Iterable<Record<string, unknown>>);
 }
 
+async function loadAvailability() {
+  const result = await db.execute(
+    `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status
+     FROM availability a
+     JOIN experiences e ON e.id = a.experience_id
+     WHERE a.status = 'open' AND e.is_published = 1
+       AND a.date >= date('now')
+       AND (a.capacity - a.booked) > 0
+     ORDER BY a.date ASC, a.time ASC`
+  );
+
+  return toPlainRows<AvailabilitySlot>(
+    result.rows.map((row) => ({
+      ...row,
+      remaining: Number(row.capacity) - Number(row.booked),
+    })) as Iterable<Record<string, unknown>>
+  );
+}
+
 async function loadContent(): Promise<ContentMap> {
   const result = await db.execute({
     sql: `SELECT page_key, section_key, field_key, locale,
@@ -76,25 +95,23 @@ async function loadContent(): Promise<ContentMap> {
 
 async function loadLandingData() {
   await ensureMigrated();
-  const [experiences, facilitators, content] = await Promise.all([
-    loadExperiences(),
-    loadFacilitators(),
-    loadContent(),
+  const [experiences, facilitators, availability, content] = await Promise.all([
+    loadWithTimeout(loadExperiences, []),
+    loadWithTimeout(loadFacilitators, []),
+    loadWithTimeout(loadAvailability, []),
+    loadWithTimeout(loadContent, {}),
   ]);
-  return { experiences, facilitators, content };
+  return { experiences, facilitators, availability, content };
 }
 
 export default async function HomePage() {
-  const initialData = await loadWithTimeout(
-    loadLandingData,
-    { experiences: [], facilitators: [], content: {} },
-    800
-  );
+  const initialData = await loadLandingData();
 
   return (
     <LandingClient
       initialExperiences={initialData.experiences}
       initialFacilitators={initialData.facilitators}
+      initialAvailability={initialData.availability}
       initialContent={initialData.content}
     />
   );
