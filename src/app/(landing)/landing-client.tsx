@@ -578,6 +578,28 @@ export default function LandingClient({
                     </div>
                     <div className="rec-body">
                       {exp.tag && <span className="rec-tags"><span className="lng-es">{exp.tag}</span>{exp.tag_en && <span className="lng-en">{exp.tag_en}</span>}</span>}
+                      <div className="rec-dates">
+                        <span className="rec-dates-label"><span className="lng-es">Fechas</span><span className="lng-en">Dates</span></span>
+                        <span className="date-list">
+                          {slots.length > 0 ? (
+                            slots.map((slot) => (
+                              <span key={slot.id} className="date-chip">
+                                <span className="lng-es">{formatSlotDate(slot, "es")}</span>
+                                <span className="lng-en">{formatSlotDate(slot, "en")}</span>
+                              </span>
+                            )).concat(
+                              allSlots.length > slots.length ? [
+                                <span key="more" className="date-chip date-chip-more">+{allSlots.length - slots.length}</span>,
+                              ] : []
+                            )
+                          ) : (
+                            <span className="date-chip date-chip-empty">
+                              <span className="lng-es">Por confirmar</span>
+                              <span className="lng-en">To be confirmed</span>
+                            </span>
+                          )}
+                        </span>
+                      </div>
                       <h3 className="rec-name"><span className="lng-es">{exp.title}</span>{exp.title_en && <span className="lng-en">{exp.title_en}</span>}</h3>
                       {exp.description && (
                         <p className="rec-product"><span className="lng-es">{exp.description}</span>{exp.description_en && <span className="lng-en">{exp.description_en}</span>}</p>
@@ -593,28 +615,6 @@ export default function LandingClient({
                         {exp.language && (
                           <div className="rs"><span className="rsk"><span className="lng-es">Idioma</span><span className="lng-en">Language</span></span><span className="rsv">{exp.language}</span></div>
                         )}
-                        <div className="rs rs-dates">
-                          <span className="rsk"><span className="lng-es">Fechas</span><span className="lng-en">Dates</span></span>
-                          <span className="rsv date-list">
-                            {slots.length > 0 ? (
-                              slots.map((slot) => (
-                                <span key={slot.id} className="date-chip">
-                                  <span className="lng-es">{formatSlotDate(slot, "es")}</span>
-                                  <span className="lng-en">{formatSlotDate(slot, "en")}</span>
-                                </span>
-                              )).concat(
-                                allSlots.length > slots.length ? [
-                                  <span key="more" className="date-chip date-chip-more">+{allSlots.length - slots.length}</span>,
-                                ] : []
-                              )
-                            ) : (
-                              <>
-                                <span className="lng-es">Por confirmar</span>
-                                <span className="lng-en">To be confirmed</span>
-                              </>
-                            )}
-                          </span>
-                        </div>
                       </div>
                       <div className="rec-foot">
                         <div className="rec-lead"><span className="lead-avatar">{initials}</span><span className="lead-meta"><span className="lbl"><span className="lng-es">Anfitrión</span><span className="lng-en">Host</span></span><span className="nm">{exp.facilitator_name || "Por anunciar"}</span></span></div>

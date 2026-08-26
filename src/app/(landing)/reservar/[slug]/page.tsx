@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import Script from "next/script";
 
 type Slot = {
   id: string;
@@ -29,6 +30,27 @@ type Customer = {
   company: string;
 };
 
+type ClipCard = {
+  mount: (id: string) => void;
+  cardToken: () => Promise<{ id: string }>;
+};
+
+declare global {
+  interface Window {
+    ClipSDK?: new (apiKey: string) => {
+      element: {
+        create: (type: "Card", options: { theme: "light" | "dark"; locale: "es" | "en" }) => ClipCard;
+      };
+    };
+  }
+}
+
+const CLIP_CARD_CONTAINER_ID = "clip-card-checkout";
+const publicPaymentProvider = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER || "manual").toLowerCase();
+const clipPublicKey = process.env.NEXT_PUBLIC_CLIP_API_KEY || "";
+const clipCheckoutExpected = publicPaymentProvider === "clip";
+const clipCheckoutEnabled = clipCheckoutExpected && Boolean(clipPublicKey);
+
 export default function ReservarPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -49,6 +71,9 @@ export default function ReservarPage() {
     company: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [clipLoaded, setClipLoaded] = useState(false);
+  const [clipCard, setClipCard] = useState<ClipCard | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -89,6 +114,23 @@ export default function ReservarPage() {
     );
   }, [selectedSlot]);
 
+  useEffect(() => {
+    if (!clipCheckoutEnabled || !clipLoaded || clipCard || !window.ClipSDK) return;
+
+    try {
+      const clip = new window.ClipSDK(clipPublicKey);
+      const card = clip.element.create("Card", {
+        theme: "dark",
+        locale: "es",
+      });
+      card.mount(CLIP_CARD_CONTAINER_ID);
+      setClipCard(card);
+      setPaymentMessage("");
+    } catch {
+      setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip.");
+    }
+  }, [clipCard, clipLoaded]);
+
   const experience = slots[0] ?? null;
   const totalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
   const priceLabel = useMemo(() => {
@@ -113,8 +155,8 @@ export default function ReservarPage() {
     const cleanEmail = customer.email.trim().toLowerCase();
     const cleanPhone = customer.phone.trim();
 
-    if (!cleanName || !cleanEmail) {
-      setError("Nombre y correo son obligatorios.");
+    if (!cleanName || !cleanEmail || (clipCheckoutExpected && !cleanPhone)) {
+      setError(clipCheckoutExpected ? "Nombre, correo y teléfono son obligatorios para pagar con Clip." : "Nombre y correo son obligatorios.");
       return;
     }
 
@@ -127,6 +169,19 @@ export default function ReservarPage() {
     setError("");
 
     try {
+      let cardToken = "";
+      if (clipCheckoutExpected) {
+        if (!clipPublicKey) {
+          throw new Error("Falta configurar NEXT_PUBLIC_CLIP_API_KEY para mostrar el formulario de pago Clip.");
+        }
+        if (!clipCard) {
+          throw new Error("El formulario de tarjeta todavía no está listo. Intenta de nuevo en unos segundos.");
+        }
+        setPaymentMessage("Validando tarjeta de forma segura con Clip...");
+        const token = await clipCard.cardToken();
+        cardToken = token.id;
+      }
+
       const res = await fetch("/api/public/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,20 +199,30 @@ export default function ReservarPage() {
           interests: customer.interests.trim(),
           referralSource: customer.referralSource.trim(),
           company: customer.company.trim(),
+          cardToken,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      window.location.href = data.checkoutUrl;
+      window.location.href = data.pendingActionUrl || data.checkoutUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pudimos crear la reserva.");
       setSubmitting(false);
+      setPaymentMessage("");
     }
   }
 
   return (
     <main className="public-flow public-flow--booking">
+      {clipCheckoutExpected && (
+        <Script
+          src="https://sdk.clip.mx/js/clip-sdk.js"
+          strategy="afterInteractive"
+          onLoad={() => setClipLoaded(true)}
+          onError={() => setPaymentMessage("No pudimos cargar el SDK de Clip. Revisa la conexión e intenta de nuevo.")}
+        />
+      )}
       <div className="public-shell booking-shell">
         <a className="public-back" href="/">
           Volver al inicio
@@ -383,6 +448,29 @@ export default function ReservarPage() {
                 </div>
               </div>
 
+              <div className="form-section">
+                <div className="form-section__head">
+                  <span>04</span>
+                  <h2>Pago seguro</h2>
+                </div>
+
+                <div className="clip-payment-box">
+                  {clipCheckoutEnabled ? (
+                    <>
+                      <div id={CLIP_CARD_CONTAINER_ID} className="clip-card-frame" />
+                      <p className="payment-note">Tus datos de tarjeta se capturan en el iframe seguro de Clip; Raíz no los recibe ni los guarda.</p>
+                    </>
+                  ) : clipCheckoutExpected ? (
+                    <p className="payment-note payment-note--warning">
+                      Clip queda listo al configurar <code>NEXT_PUBLIC_CLIP_API_KEY</code>, <code>CLIP_API_KEY</code>, <code>NEXT_PUBLIC_PAYMENT_PROVIDER=clip</code> y <code>PAYMENT_PROVIDER=clip</code>.
+                    </p>
+                  ) : (
+                    <p className="payment-note">El pago se completará en el siguiente paso según la pasarela configurada.</p>
+                  )}
+                  {paymentMessage && <p className="payment-note">{paymentMessage}</p>}
+                </div>
+              </div>
+
               {error && <p className="public-error">{error}</p>}
 
               <div className="booking-summary">
@@ -391,7 +479,7 @@ export default function ReservarPage() {
                   <strong>{totalAmount > 0 ? `$${totalAmount.toLocaleString("es-MX")} MXN` : "Por confirmar"}</strong>
                 </div>
                 <button type="submit" className="btn btn-solid public-submit" disabled={submitting || !selectedSlot}>
-                  {submitting ? "Procesando..." : "Reservar y continuar"}
+                  {submitting ? "Procesando..." : clipCheckoutExpected ? "Pagar y reservar" : "Reservar y continuar"}
                 </button>
               </div>
             </section>

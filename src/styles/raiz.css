@@ -49,6 +49,11 @@
   padding: clamp(20px, 4vw, 48px) 0 clamp(42px, 7vw, 86px);
 }
 
+.booking-shell {
+  width: min(1120px, calc(100% - 32px));
+  padding-top: clamp(16px, 3vw, 34px);
+}
+
 .public-back {
   display: inline-flex;
   align-items: center;
@@ -83,8 +88,8 @@
 
 .booking-grid {
   display: grid;
-  grid-template-columns: minmax(0, .95fr) minmax(360px, .72fr);
-  gap: clamp(24px, 5vw, 72px);
+  grid-template-columns: minmax(300px, .88fr) minmax(380px, .9fr);
+  gap: clamp(20px, 4vw, 52px);
   align-items: start;
 }
 
@@ -161,12 +166,19 @@
   box-shadow: var(--shadow);
 }
 .booking-card {
-  padding: clamp(18px, 3vw, 30px);
+  max-height: calc(100dvh - clamp(88px, 10vw, 124px));
+  overflow-y: auto;
+  padding: clamp(16px, 2.4vw, 24px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
 }
+.booking-card::-webkit-scrollbar { width: 4px; }
+.booking-card::-webkit-scrollbar-track { background: transparent; }
+.booking-card::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; }
 
 .form-section {
-  padding: 0 0 clamp(18px, 3vw, 26px);
-  margin-bottom: clamp(18px, 3vw, 26px);
+  padding: 0 0 clamp(14px, 2vw, 20px);
+  margin-bottom: clamp(14px, 2vw, 20px);
   border-bottom: 1px solid var(--rule-soft);
 }
 .form-section:last-of-type {
@@ -176,7 +188,7 @@
   display: flex;
   align-items: baseline;
   gap: .75rem;
-  margin-bottom: 1rem;
+  margin-bottom: .8rem;
 }
 .form-section__head span {
   font-family: var(--font-display);
@@ -190,14 +202,14 @@
 
 .slot-list {
   display: grid;
-  gap: .65rem;
+  gap: .55rem;
 }
 .slot-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: .8rem;
-  padding: .85rem .95rem;
+  padding: .72rem .82rem;
   border: 1px solid var(--rule);
   border-radius: 10px;
   background: rgba(20, 17, 13, .56);
@@ -239,12 +251,12 @@
 .idea-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: .78rem;
 }
 .public-field {
   display: flex;
   flex-direction: column;
-  gap: .45rem;
+  gap: .34rem;
 }
 .public-field--wide,
 .public-field:has(textarea) {
@@ -258,18 +270,18 @@
 }
 .public-input {
   width: 100%;
-  min-height: 46px;
+  min-height: 42px;
   border: 1px solid var(--rule);
   border-radius: 8px;
   background: rgba(20, 17, 13, .72);
   color: var(--ink);
   font: inherit;
-  padding: .78rem .9rem;
+  padding: .66rem .76rem;
   outline: none;
   transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
 textarea.public-input {
-  min-height: 122px;
+  min-height: 84px;
   resize: vertical;
 }
 .public-input::placeholder { color: rgba(179, 170, 155, .52); }
@@ -338,12 +350,41 @@ textarea.public-input {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin: clamp(18px, 3vw, 26px) calc(clamp(18px, 3vw, 30px) * -1) calc(clamp(18px, 3vw, 30px) * -1);
-  padding: 1rem clamp(18px, 3vw, 30px);
+  margin: clamp(14px, 2vw, 20px) calc(clamp(16px, 2.4vw, 24px) * -1) calc(clamp(16px, 2.4vw, 24px) * -1);
+  padding: .9rem clamp(16px, 2.4vw, 24px);
   border-top: 1px solid var(--rule);
   border-radius: 0 0 12px 12px;
   background: rgba(20, 17, 13, .92);
   backdrop-filter: blur(12px);
+}
+.clip-payment-box {
+  display: grid;
+  gap: .7rem;
+}
+.clip-card-frame {
+  min-height: 168px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: rgba(20, 17, 13, .56);
+}
+.payment-note {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: .76rem;
+  line-height: 1.45;
+}
+.payment-note--warning {
+  border: 1px solid rgba(255, 196, 87, .28);
+  border-radius: 10px;
+  padding: .8rem .9rem;
+  background: rgba(255, 196, 87, .08);
+  color: #ffd27a;
+}
+.payment-note code {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: .72rem;
 }
 .booking-summary span {
   display: block;
@@ -1170,6 +1211,7 @@ h2 em { font-style: italic; color: var(--accent); }
 .rec-card {
   scroll-snap-align: start;
   flex: none;
+  min-height: 0;
   background: var(--paper-2);
   border: 1px solid var(--rule);
   border-radius: 14px;
@@ -1186,7 +1228,7 @@ h2 em { font-style: italic; color: var(--accent); }
 
 .rec-media {
   position: relative;
-  height: 35%;
+  height: clamp(112px, 24vh, 190px);
   min-height: 100px;
   overflow: hidden;
   background: var(--paper-3);
@@ -1250,16 +1292,40 @@ h2 em { font-style: italic; color: var(--accent); }
 }
 
 .rec-body {
-  padding: clamp(12px, 1.8vw, 20px);
+  padding: clamp(12px, 1.5vw, 18px);
   display: flex;
   flex-direction: column;
-  gap: .45rem;
+  gap: .34rem;
   flex: 1;
   overflow: hidden;
 }
-.rec-tags { font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
-.rec-name { font-family: var(--font-display); font-size: clamp(1.1rem, 2vw, 1.4rem); font-weight: 500; line-height: 1.08; }
-.rec-product { font-size: 0.82rem; color: var(--ink-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.rec-tags {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.rec-dates {
+  display: flex;
+  align-items: center;
+  gap: .34rem;
+  min-height: .8rem;
+  overflow: hidden;
+}
+.rec-dates-label {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rec-name { font-family: var(--font-display); font-size: clamp(1.05rem, 1.8vw, 1.32rem); font-weight: 500; line-height: 1.05; }
+.rec-product { font-size: 0.78rem; color: var(--ink-dim); line-height: 1.34; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rec-pull {
   font-family: var(--font-display);
   font-style: italic;
@@ -1270,48 +1336,67 @@ h2 em { font-style: italic; color: var(--accent); }
   padding-left: .7rem;
 }
 .rec-spec {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border: 1px solid var(--rule);
   border-radius: 8px;
   overflow: hidden;
-  margin-top: auto;
+  margin-top: .15rem;
 }
-.rs { display: flex; justify-content: space-between; align-items: center; padding: .45rem .7rem; border-bottom: 1px solid var(--rule-hair); }
-.rs-dates {
+.rs {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: .08rem;
+  justify-content: flex-start;
   align-items: flex-start;
-  gap: .7rem;
+  padding: .36rem .52rem;
+  border-bottom: 1px solid var(--rule-hair);
+  border-right: 1px solid var(--rule-hair);
 }
-.rs:last-child { border-bottom: none; }
-.rsk { font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
-.rsv { font-size: 0.8rem; color: var(--ink); }
+.rs:nth-child(even) { border-right: none; }
+.rs:nth-last-child(-n + 2) { border-bottom: none; }
+.rsk { font-family: var(--font-mono); font-size: 0.46rem; letter-spacing: 0.09em; line-height: 1; text-transform: uppercase; color: var(--ink-faint); }
+.rsv { font-size: 0.74rem; line-height: 1.1; color: var(--ink); }
 .date-list {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: .28rem;
-  max-width: 70%;
-  text-align: right;
+  justify-content: flex-start;
+  gap: .14rem;
+  max-width: 100%;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
 }
 .date-chip {
-  border: 1px solid var(--rule-soft);
+  border: 0;
   border-radius: 999px;
   color: var(--accent);
   font-family: var(--font-mono);
-  font-size: 0.52rem;
+  font-size: 0.42rem;
   letter-spacing: 0.04em;
   line-height: 1;
-  padding: .32em .55em;
+  padding: 0;
   text-transform: uppercase;
   white-space: nowrap;
+}
+.date-chip + .date-chip::before {
+  content: "/";
+  color: var(--ink-faint);
+  margin-right: .2rem;
 }
 .date-chip-more {
   color: var(--ink-dim);
 }
-.meter { display: inline-flex; align-items: center; gap: .35rem; }
+.date-chip-empty {
+  color: var(--ink);
+}
+.meter { display: inline-flex; align-items: center; gap: .28rem; }
 .meter .dots { display: inline-flex; gap: 2px; }
 .meter .dots i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--ink); display: inline-block; }
 .meter .dots i.on { background: var(--accent); border-color: var(--accent); }
-.meter .ml { font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
-.rec-foot { display: flex; align-items: center; justify-content: space-between; padding-top: .6rem; border-top: 1px solid var(--rule-soft); margin-top: auto; }
+.meter .ml { font-family: var(--font-mono); font-size: 0.46rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-dim); }
+.rec-foot { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding-top: .5rem; border-top: 1px solid var(--rule-soft); margin-top: .2rem; }
 .rec-lead { display: flex; align-items: center; gap: .5rem; }
 .lead-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--paper-3); border: 1px solid var(--rule); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 0.72rem; flex: none; }
 .lead-meta .lbl { font-family: var(--font-mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); display: block; }
@@ -1917,10 +2002,12 @@ footer {
   .rec-body { padding: 10px; gap: .35rem; }
   .rec-name { font-size: 1rem; }
   .rec-product { font-size: 0.76rem; -webkit-line-clamp: 2; }
-  .rec-spec { display: block; }
-  .rs { padding: .34rem .55rem; }
-  .date-list { max-width: 66%; gap: .18rem; }
-  .date-chip { font-size: 0.48rem; padding: .28em .45em; }
+  .rec-spec { display: grid; }
+  .rs { padding: .3rem .42rem; }
+  .rec-dates { gap: .32rem; }
+  .rec-dates-label,
+  .date-chip { font-size: 0.4rem; }
+  .date-list { gap: .14rem; }
   .lc-body { padding: 8px; }
   .lc-bio { -webkit-line-clamp: 1; font-size: 0.76rem; }
   .reveal-overlay { padding: clamp(16px, 4vw, 32px); }

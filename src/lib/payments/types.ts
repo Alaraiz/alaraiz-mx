@@ -9,6 +9,8 @@ export interface CheckoutInput {
   description: string;
   reservationId: string;
   customerEmail: string;
+  customerPhone?: string;
+  cardToken?: string;
   /** Base URL of the site (e.g. https://alaraiz.mx). Used for return/redirect URLs. */
   baseUrl: string;
 }
@@ -18,6 +20,8 @@ export interface CheckoutResult {
   url: string;
   /** Unique reference for this payment attempt */
   reference: string;
+  status?: "paid" | "pending" | "failed";
+  pendingActionUrl?: string;
 }
 
 export interface WebhookResult {

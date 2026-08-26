@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
-import { toPositiveInteger } from "@/lib/reservations";
+import { confirmPaidReservation, toPositiveInteger } from "@/lib/reservations";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     if (hasSpamTrap(body)) return NextResponse.json({ ok: true });
 
     const { experienceId, availabilityId, customer } = body;
+    const cardToken = String(body.cardToken || body.paymentToken || "").trim();
     const attendeesCount = toPositiveInteger(body.attendeesCount, 1);
     const intake = {
       dietaryRestrictions: String(body.dietaryRestrictions || "").trim(),
@@ -47,10 +48,17 @@ export async function POST(request: NextRequest) {
     const customerName = String(customer?.name || "").trim();
     const customerEmail = String(customer?.email || "").trim().toLowerCase();
     const customerPhone = String(customer?.phone || "").trim();
+    const provider = (process.env.PAYMENT_PROVIDER || "manual").toLowerCase();
 
     if (!experienceId || !availabilityId || !customerName || !isValidEmail(customerEmail)) {
       return NextResponse.json(
         { error: "Faltan campos obligatorios o el correo no es válido." },
+        { status: 400 }
+      );
+    }
+    if (provider === "clip" && (!customerPhone || !cardToken)) {
+      return NextResponse.json(
+        { error: "Para pagar con Clip necesitamos teléfono y datos de tarjeta válidos." },
         { status: 400 }
       );
     }
@@ -189,6 +197,8 @@ export async function POST(request: NextRequest) {
       description: `${experience.title} — ${attendeesCount} persona(s)`,
       reservationId,
       customerEmail,
+      customerPhone,
+      cardToken,
       baseUrl,
     });
 
@@ -199,10 +209,16 @@ export async function POST(request: NextRequest) {
     });
     heldAvailabilityId = null;
 
+    if (provider === "clip" && checkout.status === "paid") {
+      await confirmPaidReservation(checkout.reference, "online");
+    }
+
     return NextResponse.json({
       checkoutUrl: checkout.url,
       reference: checkout.reference,
       reservationId,
+      paymentStatus: checkout.status || "pending",
+      pendingActionUrl: checkout.pendingActionUrl,
     });
   } catch (error) {
     if (heldAvailabilityId && heldAttendeesCount > 0) {
