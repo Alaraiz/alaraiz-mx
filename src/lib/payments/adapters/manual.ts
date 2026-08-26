@@ -13,8 +13,16 @@ export class ManualGateway implements PaymentGateway {
     return { url, reference };
   }
 
-  async verifyWebhook(payload: string, _signature: string): Promise<WebhookResult> {
-    // Manual adapter trusts the payload directly (no cryptographic verification)
+  async verifyWebhook(payload: string, signature: string): Promise<WebhookResult> {
+    const secret = process.env.PAYMENT_WEBHOOK_SECRET;
+    const providedSignature = readHeaderSignature(signature);
+    if (secret && providedSignature !== secret) {
+      throw new Error("[ManualGateway] Invalid webhook signature.");
+    }
+    if (!secret && process.env.NODE_ENV === "production") {
+      throw new Error("[ManualGateway] PAYMENT_WEBHOOK_SECRET is required for production webhooks.");
+    }
+
     try {
       const data = JSON.parse(payload);
       return {
@@ -24,5 +32,14 @@ export class ManualGateway implements PaymentGateway {
     } catch {
       return { reference: "", status: "failed" };
     }
+  }
+}
+
+function readHeaderSignature(signature: string): string {
+  try {
+    const headers = JSON.parse(signature) as { xSignature?: string };
+    return headers.xSignature || "";
+  } catch {
+    return signature;
   }
 }

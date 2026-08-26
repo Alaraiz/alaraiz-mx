@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { releaseReservationCapacity } from "@/lib/reservations";
 
 export async function PUT(
   request: NextRequest,
@@ -14,6 +15,9 @@ export async function PUT(
   try {
     const body = await request.json();
     const { paymentStatus, paymentMethod, paymentReference, status, attendeesCount, amount, availabilityId } = body;
+    if (["cancelled", "failed", "refunded"].includes(String(status || paymentStatus))) {
+      await releaseReservationCapacity(params.id);
+    }
 
     await db.execute({
       sql: `UPDATE reservations SET
@@ -45,6 +49,7 @@ export async function DELETE(
   }
 
   try {
+    await releaseReservationCapacity(params.id);
     await db.execute({ sql: "DELETE FROM reservations WHERE id = ?", args: [params.id] });
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminEmail } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { requireRole } from "@/lib/auth";
+import { db, ensureMigrated } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const email = await adminEmail();
-  if (!email) {
+  const user = await requireRole(["admin", "editor"]);
+  if (!user) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
+
+  await ensureMigrated();
 
   try {
     const body = await request.json();

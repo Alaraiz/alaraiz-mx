@@ -114,9 +114,8 @@ export default function UserManager({ notify }: Props) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="admin-section-stack">
+      <div className="admin-page-head">
         <div>
           <p className="admin-kicker">Equipo</p>
           <p className="admin-muted">Gestiona quién tiene acceso al panel.</p>
@@ -128,14 +127,12 @@ export default function UserManager({ notify }: Props) {
         )}
       </div>
 
-      {/* Create / Edit form */}
       {showForm && (
         <form
           className="admin-panel admin-inline-form"
           onSubmit={handleSubmit}
-          style={{ padding: "1rem" }}
         >
-          <p style={{ gridColumn: "1 / -1", margin: 0, fontWeight: 600, fontSize: "0.9rem", color: "var(--admin-text)" }}>
+          <p className="admin-form-title">
             {editingUser ? "Editar usuario" : "Nuevo usuario"}
           </p>
           <label>
@@ -179,7 +176,7 @@ export default function UserManager({ notify }: Props) {
               placeholder="Mínimo 8 caracteres"
             />
           </label>
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div className="admin-form-row-actions">
             <button type="button" className="admin-btn" onClick={resetForm}>
               Cancelar
             </button>
@@ -190,10 +187,9 @@ export default function UserManager({ notify }: Props) {
         </form>
       )}
 
-      {/* Permissions legend */}
       <div className="admin-panel" style={{ padding: "0.8rem 1rem" }}>
         <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Permisos por rol</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+        <div className="admin-permissions-grid">
           <div>
             <span style={{ fontWeight: 600, fontSize: "0.8rem" }}>Administrador</span>
             <p className="admin-muted" style={{ margin: "0.1rem 0 0", fontSize: "0.72rem" }}>
@@ -209,9 +205,8 @@ export default function UserManager({ notify }: Props) {
         </div>
       </div>
 
-      {/* Users list */}
-      <div className="admin-panel" style={{ maxHeight: 480, overflowY: "auto", padding: "1rem" }}>
-        <p className="admin-muted" style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+      <div className="admin-panel admin-list-panel">
+        <p className="admin-muted admin-list-count">
           {users.length} usuario{users.length !== 1 ? "s" : ""}
         </p>
         {users.length === 0 ? (
@@ -220,35 +215,19 @@ export default function UserManager({ notify }: Props) {
           users.map((user) => (
             <div
               key={user.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.7rem",
-                padding: "0.5rem 0.4rem",
-                borderBottom: "1px solid var(--admin-border)",
-              }}
+              className="admin-list-row"
             >
-              {/* Avatar */}
               <span
+                className="admin-avatar"
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
                   background: user.role === "admin" ? "#4f46e5" : "var(--admin-accent)",
                   color: user.role === "admin" ? "#fff" : "var(--admin-accent-ink)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  flexShrink: 0,
                 }}
               >
                 {(user.name || user.email).slice(0, 1).toUpperCase()}
               </span>
 
-              {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="admin-list-main">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                   <strong style={{ fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {user.name || user.email}
@@ -275,8 +254,7 @@ export default function UserManager({ notify }: Props) {
                 </span>
               </div>
 
-              {/* Actions */}
-              <div style={{ display: "flex", gap: "0.4rem", flexShrink: 0 }}>
+              <div className="admin-row-actions">
                 <button className="admin-btn admin-small" onClick={() => startEdit(user)}>
                   Editar
                 </button>

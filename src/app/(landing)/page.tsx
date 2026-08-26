@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import RichTextContent from "@/content-cms/RichTextContent";
+import type { ContentMap } from "@/content-cms/registry";
 
 /* ── Scroll-reveal hook (IntersectionObserver) ── */
 function useReveal() {
@@ -188,16 +190,61 @@ function toRoman(num: number): string {
 export default function HomePage() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   const [experiences, setExperiences] = useState<Experience[] | null>(null);
   const [facilitators, setFacilitators] = useState<Facilitator[] | null>(null);
+  const [content, setContent] = useState<ContentMap>({});
   const [heroMounted, setHeroMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fontScale, setFontScale] = useState<"base" | "large" | "xlarge">("base");
+  const [leadForm, setLeadForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    experience: "",
+    people: "1",
+    accessibility: "Sin requerimientos",
+    message: "",
+    company: "",
+  });
+  const [leadNotice, setLeadNotice] = useState("");
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
 
   useReveal();
   useCarousel();
 
   useEffect(() => { setHeroMounted(true); }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("raiz-font-scale");
+    if (saved === "large" || saved === "xlarge") setFontScale(saved);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("raiz-font-scale", fontScale);
+  }, [fontScale]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (!navRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -232,12 +279,58 @@ export default function HomePage() {
       .catch(() => setFacilitators([]));
   }, []);
 
+  useEffect(() => {
+    fetch("/api/public/content?pageKey=landing")
+      .then((r) => r.json())
+      .then((data) => setContent(data.content ?? {}))
+      .catch(() => setContent({}));
+  }, []);
+
+  const copy = (
+    sectionKey: string,
+    fieldKey: string,
+    locale: "es" | "en",
+    fallback: string
+  ) =>
+    content[`landing.${sectionKey}.${fieldKey}.${locale}`] ||
+    fallback;
+
+  async function submitLead(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLeadNotice("");
+    setLeadSubmitting(true);
+    try {
+      const response = await fetch("/api/public/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leadForm),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No pudimos guardar tu solicitud.");
+      setLeadNotice(lang === "en" ? "Request received. We'll reply personally." : "Solicitud recibida. Te responderemos personalmente.");
+      setLeadForm({
+        name: "",
+        email: "",
+        phone: "",
+        experience: "",
+        people: "1",
+        accessibility: "Sin requerimientos",
+        message: "",
+        company: "",
+      });
+    } catch (error) {
+      setLeadNotice(error instanceof Error ? error.message : "No pudimos guardar tu solicitud.");
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
+
   return (
-    <main data-lang={lang}>
+    <main data-lang={lang} className={`raiz-snap font-scale-${fontScale}`}>
       {/* ============ HERO ============ */}
       <section className="hero section-screen" id="top">
         {/* ── Top nav: lang toggle + hamburger ── */}
-        <div className="top-nav">
+        <div className="top-nav" ref={navRef}>
           <button
             className="lang-toggle"
             onClick={() => setLang(lang === "es" ? "en" : "es")}
@@ -247,11 +340,38 @@ export default function HomePage() {
             {" / "}
             <span className={lang === "en" ? "lang-active" : ""}>EN</span>
           </button>
+          <div className="font-controls" aria-label="Tamaño de texto">
+            <button
+              type="button"
+              onClick={() => setFontScale("base")}
+              aria-pressed={fontScale === "base"}
+              title="Tamaño base"
+            >
+              A
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontScale("large")}
+              aria-pressed={fontScale === "large"}
+              title="Texto grande"
+            >
+              A+
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontScale("xlarge")}
+              aria-pressed={fontScale === "xlarge"}
+              title="Texto extra grande"
+            >
+              A++
+            </button>
+          </div>
           <button
             className="hamburger-btn"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={menuOpen}
+            aria-controls="landing-menu"
           >
             <span className={`hamburger-icon${menuOpen ? " open" : ""}`}>
               <span></span>
@@ -261,7 +381,11 @@ export default function HomePage() {
           </button>
 
           {/* ── Dropdown menu ── */}
-          <nav className={`hamburger-menu${menuOpen ? " hamburger-menu--open" : ""}`} aria-hidden={!menuOpen}>
+          <nav
+            id="landing-menu"
+            className={`hamburger-menu${menuOpen ? " hamburger-menu--open" : ""}`}
+            aria-hidden={!menuOpen}
+          >
             <a href="#recreo" onClick={() => setMenuOpen(false)}>
               <span className="lng-es">Experiencias</span>
               <span className="lng-en">Experiences</span>
@@ -306,25 +430,25 @@ export default function HomePage() {
           {/* Hero text overlay inside the reveal container */}
           <div className={`reveal-overlay${heroMounted ? " hero-entered" : ""}`}>
             <span className="hero-eyebrow hero-stagger s1">
-              <span className="lng-es">Ciudad de México · Experiencias de un día</span>
-              <span className="lng-en">Mexico City · One-day experiences</span>
+              <span className="lng-es">{copy("hero", "eyebrow", "es", "Ciudad de México · Experiencias de un día")}</span>
+              <span className="lng-en">{copy("hero", "eyebrow", "en", "Mexico City · One-day experiences")}</span>
             </span>
             <h1 className="hero-stagger s2">
-              <span className="lng-es">La ciudad<br /><em>debajo</em> de la ciudad.</span>
-              <span className="lng-en">The city<br /><em>beneath</em> the city.</span>
+              <RichTextContent className="lng-es" html={copy("hero", "title", "es", "La ciudad<br><em>debajo</em> de la ciudad.")} />
+              <RichTextContent className="lng-en" html={copy("hero", "title", "en", "The city<br><em>beneath</em> the city.")} />
             </h1>
             <p className="hero-dek hero-stagger s3">
-              <span className="lng-es">Existe una versión de la Ciudad de México que no aparece en ninguna plataforma. Raíz te lleva ahí —con quienes la habitan, no quienes la venden.</span>
-              <span className="lng-en">There&apos;s a version of Mexico City that lives on no platform. Raíz takes you there —with the people who inhabit it, not the ones who sell it.</span>
+              <span className="lng-es">{copy("hero", "lede", "es", "Existe una versión de la Ciudad de México que no aparece en ninguna plataforma. Raíz te lleva ahí —con quienes la habitan, no quienes la venden.")}</span>
+              <span className="lng-en">{copy("hero", "lede", "en", "There's a version of Mexico City that lives on no platform. Raíz takes you there —with the people who inhabit it, not the ones who sell it.")}</span>
             </p>
             <div className="hero-actions hero-stagger s4">
               <a href="#recreo" className="btn btn-solid">
-                <span className="lng-es">Ver las experiencias</span>
-                <span className="lng-en">See the experiences</span>
+                <span className="lng-es">{copy("hero", "primaryCta", "es", "Ver las experiencias")}</span>
+                <span className="lng-en">{copy("hero", "primaryCta", "en", "See the experiences")}</span>
               </a>
               <a href="#manifiesto" className="btn btn-ghost">
-                <span className="lng-es">Lee el manifiesto</span>
-                <span className="lng-en">Read the manifesto</span>
+                <span className="lng-es">{copy("hero", "secondaryCta", "es", "Lee el manifiesto")}</span>
+                <span className="lng-en">{copy("hero", "secondaryCta", "en", "Read the manifesto")}</span>
               </a>
             </div>
           </div>
@@ -343,12 +467,12 @@ export default function HomePage() {
         <div className="wrap">
           <div className="masthead reveal-on-scroll">
             <div className="mh-l">
-              <span className="kicker"><span className="lng-es">Recreo · Experiencias de un día</span><span className="lng-en">Recreo · One-day experiences</span></span>
-              <h2><span className="lng-es">Tres <em>experiencias</em>,<br />cada una un mundo.</span><span className="lng-en">Three <em>experiences</em>,<br />each its own world.</span></h2>
+              <span className="kicker"><span className="lng-es">{copy("recreo", "kicker", "es", "Recreo · Experiencias de un día")}</span><span className="lng-en">{copy("recreo", "kicker", "en", "Recreo · One-day experiences")}</span></span>
+              <h2><RichTextContent className="lng-es" html={copy("recreo", "title", "es", "Tres <em>experiencias</em>,<br>cada una un mundo.")} /><RichTextContent className="lng-en" html={copy("recreo", "title", "en", "Three <em>experiences</em>,<br>each its own world.")} /></h2>
             </div>
             <span className="folio"><span className="lng-es">Desliza para recorrerlas</span><span className="lng-en">Swipe to explore</span></span>
           </div>
-          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(24px,4vh,40px)" }}><span className="lng-es">Cada línea es un laboratorio con su propio anfitrión y su propio arco —contexto, proceso, catarsis. Desliza para recorrerlas.</span><span className="lng-en">Each line is a lab with its own host and its own arc — context, process, catharsis. Swipe to explore them.</span></p>
+          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(24px,4vh,40px)" }}><span className="lng-es">{copy("recreo", "lede", "es", "Cada línea es un laboratorio con su propio anfitrión y su propio arco —contexto, proceso, catarsis. Desliza para recorrerlas.")}</span><span className="lng-en">{copy("recreo", "lede", "en", "Each line is a lab with its own host and its own arc — context, process, catharsis. Swipe to explore them.")}</span></p>
 
           <div className="rec-rail" id="recRail">
           {/* Dynamic experience cards from CMS */}
@@ -440,12 +564,12 @@ export default function HomePage() {
         <div className="wrap">
           <div className="masthead reveal-on-scroll">
             <div className="mh-l">
-              <span className="kicker"><span className="lng-es">Quién te recibe</span><span className="lng-en">Who receives you</span></span>
-              <h2><span className="lng-es">Especialistas que <em>viven</em> lo que narran.</span><span className="lng-en">Specialists who <em>live</em> what they tell.</span></h2>
+              <span className="kicker"><span className="lng-es">{copy("specialists", "kicker", "es", "Quién te recibe")}</span><span className="lng-en">{copy("specialists", "kicker", "en", "Who receives you")}</span></span>
+              <h2><RichTextContent className="lng-es" html={copy("specialists", "title", "es", "Especialistas que <em>viven</em> lo que narran.")} /><RichTextContent className="lng-en" html={copy("specialists", "title", "en", "Specialists who <em>live</em> what they tell.")} /></h2>
             </div>
             <span className="folio"><span className="lng-es">Anfitriones de línea</span><span className="lng-en">Line hosts</span></span>
           </div>
-          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(34px,5vh,52px)" }}><span className="lng-es">Cada experiencia la lleva quien la conoce desde adentro: su oficio es su credencial, y la ciudad que te muestran es, antes que nada, la suya.</span><span className="lng-en">Each experience is led by someone who knows it from the inside: their craft is their credential, and the city they show you is, above all, their own.</span></p>
+          <p className="lede reveal-on-scroll" style={{ maxWidth: "62ch", marginBottom: "clamp(34px,5vh,52px)" }}><span className="lng-es">{copy("specialists", "lede", "es", "Cada experiencia la lleva quien la conoce desde adentro: su oficio es su credencial, y la ciudad que te muestran es, antes que nada, la suya.")}</span><span className="lng-en">{copy("specialists", "lede", "en", "Each experience is led by someone who knows it from the inside: their craft is their credential, and the city they show you is, above all, their own.")}</span></p>
 
           <div className="leads-grid">
             {facilitators === null ? (
@@ -514,37 +638,46 @@ export default function HomePage() {
         <div className="wrap">
           <div className="rsvp-grid">
             <div className="rsvp-left reveal-on-scroll">
-              <span className="kicker"><span className="lng-es">El lanzamiento público</span><span className="lng-en">The public launch</span></span>
-              <h2><span className="lng-es">Tres líneas.<br />Un <em>lanzamiento</em>.</span><span className="lng-en">Three lines.<br />One <em>launch</em>.</span></h2>
-              <p className="lede"><span className="lng-es">Después de seis meses de incubación y cuatro intensas semanas de laboratorio con el equipo, las tres experiencias se abren al público por primera vez. Solicita tu lugar; te diremos honestamente si es para ti.</span><span className="lng-en">After six months of incubation and four intense weeks of lab with the team, the three experiences open to the public for the first time. Request your spot; we&apos;ll honestly tell you if it&apos;s for you.</span></p>
+              <span className="kicker"><span className="lng-es">{copy("rsvp", "kicker", "es", "El lanzamiento público")}</span><span className="lng-en">{copy("rsvp", "kicker", "en", "The public launch")}</span></span>
+              <h2><RichTextContent className="lng-es" html={copy("rsvp", "title", "es", "Tres líneas.<br>Un <em>lanzamiento</em>.")} /><RichTextContent className="lng-en" html={copy("rsvp", "title", "en", "Three lines.<br>One <em>launch</em>.")} /></h2>
+              <p className="lede"><span className="lng-es">{copy("rsvp", "lede", "es", "Después de seis meses de incubación y cuatro intensas semanas de laboratorio con el equipo, las tres experiencias se abren al público por primera vez. Solicita tu lugar; te diremos honestamente si es para ti.")}</span><span className="lng-en">{copy("rsvp", "lede", "en", "After six months of incubation and four intense weeks of lab with the team, the three experiences open to the public for the first time. Request your spot; we'll honestly tell you if it's for you.")}</span></p>
               <div className="launch-card">
-                <div className="launch-row"><span className="lk"><span className="lng-es">Fecha</span><span className="lng-en">Date</span></span><span className="lv">29 Jun – 4 Jul<small><span className="lng-es">Semana de lanzamiento · 2026</span><span className="lng-en">Launch week · 2026</span></small></span></div>
-                <div className="launch-row"><span className="lk"><span className="lng-es">Lugar</span><span className="lng-en">Place</span></span><span className="lv"><span className="lng-es">Ciudad de México</span><span className="lng-en">Mexico City</span><small>San Rafael · Chapultepec</small></span></div>
+                <div className="launch-row"><span className="lk"><span className="lng-es">Fecha</span><span className="lng-en">Date</span></span><span className="lv"><span className="lng-es">{copy("rsvp", "date", "es", "29 Jun – 4 Jul")}</span><span className="lng-en">{copy("rsvp", "date", "en", "Jun 29 – Jul 4")}</span><small><span className="lng-es">Semana de lanzamiento · 2026</span><span className="lng-en">Launch week · 2026</span></small></span></div>
+                <div className="launch-row"><span className="lk"><span className="lng-es">Lugar</span><span className="lng-en">Place</span></span><span className="lv"><span className="lng-es">{copy("rsvp", "place", "es", "Ciudad de México")}</span><span className="lng-en">{copy("rsvp", "place", "en", "Mexico City")}</span><small>San Rafael · Chapultepec</small></span></div>
                 <div className="launch-row"><span className="lk"><span className="lng-es">Cupos</span><span className="lng-en">Spots</span></span><span className="lv"><span className="lng-es">Limitados</span><span className="lng-en">Limited</span><small><span className="lng-es">Grupos pequeños · precio público real</span><span className="lng-en">Small groups · real public price</span></small></span></div>
               </div>
             </div>
 
             <div className="form-card reveal-on-scroll">
-              <form id="rsvpForm" noValidate>
+              <form id="rsvpForm" onSubmit={submitLead}>
                 <h3><span className="lng-es">Solicita tu lugar</span><span className="lng-en">Request your spot</span></h3>
                 <p className="fsub"><span className="lng-es">Una solicitud, no una compra. Te respondemos personalmente.</span><span className="lng-en">A request, not a purchase. We reply personally.</span></p>
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={leadForm.company}
+                  onChange={(event) => setLeadForm({ ...leadForm, company: event.target.value })}
+                  aria-hidden="true"
+                  style={{ position: "absolute", left: "-9999px" }}
+                />
                 <div className="field row2">
-                  <div><label htmlFor="nombre"><span className="lng-es">Nombre</span><span className="lng-en">Name</span></label><input id="nombre" name="nombre" type="text" placeholder="Tu nombre" autoComplete="name" /></div>
-                  <div><label htmlFor="email"><span className="lng-es">Correo</span><span className="lng-en">Email</span></label><input id="email" name="email" type="email" placeholder="tú@correo.com" autoComplete="email" /></div>
+                  <div><label htmlFor="nombre"><span className="lng-es">Nombre</span><span className="lng-en">Name</span></label><input id="nombre" name="nombre" type="text" placeholder="Tu nombre" autoComplete="name" required value={leadForm.name} onChange={(event) => setLeadForm({ ...leadForm, name: event.target.value })} /></div>
+                  <div><label htmlFor="email"><span className="lng-es">Correo</span><span className="lng-en">Email</span></label><input id="email" name="email" type="email" placeholder="tú@correo.com" autoComplete="email" required value={leadForm.email} onChange={(event) => setLeadForm({ ...leadForm, email: event.target.value })} /></div>
                 </div>
                 <div className="field">
                   <label><span className="lng-es">¿Qué experiencia te llama?</span><span className="lng-en">Which experience calls you?</span></label>
                   <div className="chips" id="chips">
-                    <span className="chip" data-v="Próximamente" role="button" tabIndex={0} aria-pressed="false"><span className="lng-es">Avísame de la nueva</span><span className="lng-en">Notify me · new line</span></span>
+                    <button type="button" className="chip" data-v="Próximamente" aria-pressed={leadForm.experience === "Próximamente"} onClick={() => setLeadForm({ ...leadForm, experience: "Próximamente" })}><span className="lng-es">Avísame de la nueva</span><span className="lng-en">Notify me · new line</span></button>
                     {experiences && experiences.map((exp) => (
-                      <span key={exp.id} className="chip" data-v={exp.title} role="button" tabIndex={0} aria-pressed="false">{exp.title}</span>
+                      <button key={exp.id} type="button" className="chip" data-v={exp.title} aria-pressed={leadForm.experience === exp.title} onClick={() => setLeadForm({ ...leadForm, experience: exp.title })}>{exp.title}</button>
                     ))}
-                    <span className="chip" data-v="Sorpréndeme" role="button" tabIndex={0} aria-pressed="false"><span className="lng-es">Sorpréndeme</span><span className="lng-en">Surprise me</span></span>
+                    <button type="button" className="chip" data-v="Sorpréndeme" aria-pressed={leadForm.experience === "Sorpréndeme"} onClick={() => setLeadForm({ ...leadForm, experience: "Sorpréndeme" })}><span className="lng-es">Sorpréndeme</span><span className="lng-en">Surprise me</span></button>
                   </div>
                 </div>
                 <div className="field row2">
                   <div><label htmlFor="personas"><span className="lng-es">Personas</span><span className="lng-en">People</span></label>
-                    <select id="personas" name="personas">
+                    <select id="personas" name="personas" value={leadForm.people} onChange={(event) => setLeadForm({ ...leadForm, people: event.target.value })}>
                       <option value="1">1 · solo/a</option>
                       <option value="2">2 · pareja</option>
                       <option value="3-4">3–4</option>
@@ -552,20 +685,25 @@ export default function HomePage() {
                     </select>
                   </div>
                   <div><label htmlFor="acceso"><span className="lng-es">¿Algo de accesibilidad?</span><span className="lng-en">Any accessibility needs?</span></label>
-                    <select id="acceso" name="acceso">
-                      <option value="no">Sin requerimientos</option>
-                      <option value="mov">Movilidad reducida</option>
-                      <option value="ritmo">Prefiero ritmo lento</option>
-                      <option value="otro">Otro</option>
+                    <select id="acceso" name="acceso" value={leadForm.accessibility} onChange={(event) => setLeadForm({ ...leadForm, accessibility: event.target.value })}>
+                      <option>Sin requerimientos</option>
+                      <option>Movilidad reducida</option>
+                      <option>Prefiero ritmo lento</option>
+                      <option>Otro</option>
                     </select>
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="mensaje"><span className="lng-es">¿Algo que debamos saber? <span style={{ textTransform: "none", letterSpacing: 0 }}>(opcional)</span></span><span className="lng-en">Anything we should know? <span style={{ textTransform: "none", letterSpacing: 0 }}>(optional)</span></span></label>
-                  <textarea id="mensaje" name="mensaje" rows={2} placeholder="Idioma, fechas, intereses, necesidades de acceso…"></textarea>
+                  <textarea id="mensaje" name="mensaje" rows={2} placeholder="Idioma, fechas, intereses, necesidades de acceso…" value={leadForm.message} onChange={(event) => setLeadForm({ ...leadForm, message: event.target.value })}></textarea>
                 </div>
+                <div className="field">
+                  <label htmlFor="telefono"><span className="lng-es">Teléfono / WhatsApp</span><span className="lng-en">Phone / WhatsApp</span></label>
+                  <input id="telefono" name="telefono" type="tel" placeholder="+52..." autoComplete="tel" value={leadForm.phone} onChange={(event) => setLeadForm({ ...leadForm, phone: event.target.value })} />
+                </div>
+                {leadNotice && <p className="send-note send-note--notice">{leadNotice}</p>}
                 <div className="form-actions">
-                  <button type="submit" className="btn btn-solid"><span className="lng-es">Enviar solicitud</span><span className="lng-en">Send request</span></button>
+                  <button type="submit" className="btn btn-solid" disabled={leadSubmitting}><span className="lng-es">{leadSubmitting ? "Enviando..." : "Enviar solicitud"}</span><span className="lng-en">{leadSubmitting ? "Sending..." : "Send request"}</span></button>
                   <span className="form-note"><span className="lng-es">Respondemos personalmente, no con un robot.</span><span className="lng-en">We reply personally, not with a robot.</span></span>
                 </div>
               </form>
@@ -580,18 +718,18 @@ export default function HomePage() {
           <div className="masthead reveal-on-scroll">
             <div className="mh-l">
               <span className="kicker"><span className="lng-es">Descubre más</span><span className="lng-en">Discover more</span></span>
-              <h2><span className="lng-es">Todo lo demás,<br />a un <em>clic</em>.</span><span className="lng-en">Everything else,<br />one <em>click</em> away.</span></h2>
+              <h2><RichTextContent className="lng-es" html={copy("discover", "title", "es", "Todo lo demás,<br>a un <em>clic</em>.")} /><RichTextContent className="lng-en" html={copy("discover", "title", "en", "Everything else,<br>one <em>click</em> away.")} /></h2>
             </div>
             <span className="folio"><span className="lng-es">FAQ · Comunidad · Manifiesto · Servicios · Esporas · Fundadores · Studio</span><span className="lng-en">FAQ · Community · Manifesto · Services · Esporas · Founders · Studio</span></span>
           </div>
 
-          <DiscoverPanel />
+          <DiscoverPanel content={content} />
         </div>
 
         {/* Footer inside descubre, distributed full-width */}
         <footer id="footer">
           <div className="wrap foot-wide">
-            <p className="foot-manifesto"><span className="lng-es">Esto no es un tour.<br />Es una <em>introducción</em>.</span><span className="lng-en">This isn&apos;t a tour.<br />It&apos;s an <em>introduction</em>.</span></p>
+            <p className="foot-manifesto"><RichTextContent className="lng-es" html={copy("footer", "manifesto", "es", "Esto no es un tour.<br>Es una <em>introducción</em>.")} /><RichTextContent className="lng-en" html={copy("footer", "manifesto", "en", "This isn't a tour.<br>It's an <em>introduction</em>.")} /></p>
             <div className="foot-bottom">
               <div className="foot-cols">
                 <div className="col"><span className="mono"><span className="lng-es">Navega</span><span className="lng-en">Navigate</span></span><a href="#recreo">Recreo</a><a href="#especialistas"><span className="lng-es">Acompañantes</span><span className="lng-en">Hosts</span></a><a href="#rsvp"><span className="lng-es">Reserva</span><span className="lng-en">Book</span></a></div>
@@ -626,17 +764,23 @@ const FAQ_DATA = [
   { n: "07", q: ["¿Cuándo puedo reservar?", "When can I book?"], a: ["El lanzamiento público es la semana del 29 de junio al 4 de julio de 2026. Los cupos son limitados y revisamos cada solicitud personalmente.", "The public launch is the week of June 29 – July 4, 2026. Spots are limited and we review every request personally."] },
 ];
 
-function DiscoverPanel() {
+function DiscoverPanel({ content }: { content: ContentMap }) {
   const [active, setActive] = useState<string>("faq");
+  const copy = (
+    sectionKey: string,
+    fieldKey: string,
+    locale: "es" | "en",
+    fallback: string
+  ) => content[`landing.${sectionKey}.${fieldKey}.${locale}`] || fallback;
 
   const sections = [
-    { id: "faq", n: "01", label: ["Preguntas honestas", "Honest questions"], meta: ["Lo que necesitas saber antes de reservar.", "What to know before you book."] },
-    { id: "comunidad", n: "02", label: ["No viajas solo", "You don\u2019t travel alone"], meta: ["Grupos pequeños de 6 a 8. Cómo funciona.", "Small groups of 6\u20138. How it works."] },
-    { id: "manifiesto", n: "03", label: ["El manifiesto", "The manifesto"], meta: ["Por qué la ciudad se cuenta desde adentro.", "Why the city is told from the inside."] },
-    { id: "servicios", n: "04", label: ["Una raíz, tres expresiones", "One root, three expressions"], meta: ["Recreo, Esporas y Raíz Studio.", "Recreo, Esporas and Raíz Studio."] },
-    { id: "esporas", n: "05", label: ["Esporas & Détente", "Esporas & Détente"], meta: ["El brazo editorial y la revista — Nº 01 y Nº 02.", "The editorial arm and the magazine — issues No. 01 & 02."] },
-    { id: "fundadores", n: "06", label: ["Quiénes fundaron Raíz", "Who founded Raíz"], meta: ["Fernanda Resendiz y Cesar Jeronimo Esquinca.", "Fernanda Resendiz and Cesar Jeronimo Esquinca."] },
-    { id: "studio", n: "07", label: ["Raíz Studio · Asesoría", "Raíz Studio · Advisory"], meta: ["Formación y consultoría para operadores.", "Training and consulting for operators."] },
+    { id: "faq", n: "01", label: [copy("discover_nav", "faq_label", "es", "Preguntas honestas"), copy("discover_nav", "faq_label", "en", "Honest questions")], meta: [copy("discover_nav", "faq_meta", "es", "Lo que necesitas saber antes de reservar."), copy("discover_nav", "faq_meta", "en", "What to know before you book.")] },
+    { id: "comunidad", n: "02", label: [copy("discover_nav", "comunidad_label", "es", "No viajas solo"), copy("discover_nav", "comunidad_label", "en", "You don\u2019t travel alone")], meta: [copy("discover_nav", "comunidad_meta", "es", "Grupos pequeños de 6 a 8. Cómo funciona."), copy("discover_nav", "comunidad_meta", "en", "Small groups of 6\u20138. How it works.")] },
+    { id: "manifiesto", n: "03", label: [copy("discover_nav", "manifiesto_label", "es", "El manifiesto"), copy("discover_nav", "manifiesto_label", "en", "The manifesto")], meta: [copy("discover_nav", "manifiesto_meta", "es", "Por qué la ciudad se cuenta desde adentro."), copy("discover_nav", "manifiesto_meta", "en", "Why the city is told from the inside.")] },
+    { id: "servicios", n: "04", label: [copy("discover_nav", "servicios_label", "es", "Una raíz, tres expresiones"), copy("discover_nav", "servicios_label", "en", "One root, three expressions")], meta: [copy("discover_nav", "servicios_meta", "es", "Recreo, Esporas y Raíz Studio."), copy("discover_nav", "servicios_meta", "en", "Recreo, Esporas and Raíz Studio.")] },
+    { id: "esporas", n: "05", label: [copy("discover_nav", "esporas_label", "es", "Esporas & Détente"), copy("discover_nav", "esporas_label", "en", "Esporas & Détente")], meta: [copy("discover_nav", "esporas_meta", "es", "El brazo editorial y la revista — Nº 01 y Nº 02."), copy("discover_nav", "esporas_meta", "en", "The editorial arm and the magazine — issues No. 01 & 02.")] },
+    { id: "fundadores", n: "06", label: [copy("discover_nav", "fundadores_label", "es", "Quiénes fundaron Raíz"), copy("discover_nav", "fundadores_label", "en", "Who founded Raíz")], meta: [copy("discover_nav", "fundadores_meta", "es", "Fernanda Resendiz y Cesar Jeronimo Esquinca."), copy("discover_nav", "fundadores_meta", "en", "Fernanda Resendiz and Cesar Jeronimo Esquinca.")] },
+    { id: "studio", n: "07", label: [copy("discover_nav", "studio_label", "es", "Raíz Studio · Asesoría"), copy("discover_nav", "studio_label", "en", "Raíz Studio · Advisory")], meta: [copy("discover_nav", "studio_meta", "es", "Formación y consultoría para operadores."), copy("discover_nav", "studio_meta", "en", "Training and consulting for operators.")] },
   ];
 
   return (
@@ -674,10 +818,10 @@ function DiscoverPanel() {
               <div key={item.n} className="faq-item-block">
                 <div className="faq-item-q">
                   <span className="qn">{item.n}</span>
-                  <span className="qtxt"><span className="lng-es">{item.q[0]}</span><span className="lng-en">{item.q[1]}</span></span>
+                  <span className="qtxt"><span className="lng-es">{copy("faq", `q${item.n}`, "es", item.q[0])}</span><span className="lng-en">{copy("faq", `q${item.n}`, "en", item.q[1])}</span></span>
                 </div>
                 <div className="faq-item-a">
-                  <p><span className="lng-es">{item.a[0]}</span><span className="lng-en">{item.a[1]}</span></p>
+                  <p><span className="lng-es">{copy("faq", `a${item.n}`, "es", item.a[0])}</span><span className="lng-en">{copy("faq", `a${item.n}`, "en", item.a[1])}</span></p>
                 </div>
               </div>
             ))}

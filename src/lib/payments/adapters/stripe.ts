@@ -1,14 +1,15 @@
+import crypto from "crypto";
 import type { PaymentGateway, CheckoutInput, CheckoutResult, WebhookResult } from "../types";
 
 /**
- * Stripe payment adapter (STUB).
+ * Stripe payment adapter.
  *
  * Required environment variables:
  *   - STRIPE_SECRET_KEY: Your Stripe secret key (sk_live_... or sk_test_...)
  *   - PAYMENT_WEBHOOK_SECRET: Stripe webhook signing secret (whsec_...)
  *   - NEXT_PUBLIC_SITE_URL: Base URL for success/cancel redirects
  *
- * TODO: Install stripe SDK or use fetch against https://api.stripe.com/v1/
+ * Uses Stripe Checkout via HTTPS and verifies webhook signatures locally.
  */
 export class StripeGateway implements PaymentGateway {
   private secretKey: string;
@@ -35,12 +36,6 @@ export class StripeGateway implements PaymentGateway {
 
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     const baseUrl = input.baseUrl;
-
-    // TODO: Replace with actual Stripe Checkout Session creation
-    // Using fetch against Stripe API:
-    // POST https://api.stripe.com/v1/checkout/sessions
-    // Headers: Authorization: Bearer ${this.secretKey}
-    // Body: mode=payment, line_items, success_url, cancel_url, metadata.reservationId
 
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -74,13 +69,12 @@ export class StripeGateway implements PaymentGateway {
   }
 
   async verifyWebhook(payload: string, signature: string): Promise<WebhookResult> {
-    // TODO: Implement Stripe signature verification using HMAC-SHA256
-    // See: https://stripe.com/docs/webhooks/signatures
-    // For now, basic parsing (INSECURE — replace before production)
+    const stripeSignature = readStripeSignature(signature);
 
-    if (!signature) {
+    if (!stripeSignature) {
       throw new Error("[StripeGateway] Missing webhook signature.");
     }
+    this.verifySignature(payload, stripeSignature);
 
     const event = JSON.parse(payload);
 
@@ -95,5 +89,52 @@ export class StripeGateway implements PaymentGateway {
       reference: event.data?.object?.id || "",
       status: "failed",
     };
+  }
+
+  private verifySignature(payload: string, signature: string) {
+    const timestamp = signature
+      .split(",")
+      .find((part) => part.startsWith("t="))
+      ?.slice(2);
+    const signatures = signature
+      .split(",")
+      .filter((part) => part.startsWith("v1="))
+      .map((part) => part.slice(3));
+
+    if (!timestamp || signatures.length === 0) {
+      throw new Error("[StripeGateway] Invalid webhook signature format.");
+    }
+
+    const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+    if (!Number.isFinite(ageSeconds) || ageSeconds > 300) {
+      throw new Error("[StripeGateway] Webhook signature timestamp outside tolerance.");
+    }
+
+    const expected = crypto
+      .createHmac("sha256", this.webhookSecret)
+      .update(`${timestamp}.${payload}`, "utf8")
+      .digest("hex");
+
+    const expectedBuffer = Buffer.from(expected, "hex");
+    const matched = signatures.some((candidate) => {
+      const candidateBuffer = Buffer.from(candidate, "hex");
+      return (
+        candidateBuffer.length === expectedBuffer.length &&
+        crypto.timingSafeEqual(candidateBuffer, expectedBuffer)
+      );
+    });
+
+    if (!matched) {
+      throw new Error("[StripeGateway] Invalid webhook signature.");
+    }
+  }
+}
+
+function readStripeSignature(signature: string): string {
+  try {
+    const headers = JSON.parse(signature) as { stripeSignature?: string };
+    return headers.stripeSignature || "";
+  } catch {
+    return signature;
   }
 }

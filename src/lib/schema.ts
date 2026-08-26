@@ -106,6 +106,7 @@ export async function migrate() {
       payment_status TEXT NOT NULL DEFAULT 'unpaid',
       payment_method TEXT DEFAULT 'pending',
       payment_reference TEXT,
+      capacity_held INTEGER NOT NULL DEFAULT 0,
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -129,6 +130,34 @@ export async function migrate() {
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
+
+    // Portable page content CMS
+    `CREATE TABLE IF NOT EXISTS content_blocks (
+      id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+      page_key TEXT NOT NULL,
+      section_key TEXT NOT NULL,
+      field_key TEXT NOT NULL,
+      locale TEXT NOT NULL DEFAULT 'es',
+      label TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'text',
+      value TEXT,
+      default_value TEXT,
+      is_rich_text INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(page_key, section_key, field_key, locale)
+    )`,
+
+    // Public form submissions connected to CRM
+    `CREATE TABLE IF NOT EXISTS form_submissions (
+      id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+      type TEXT NOT NULL,
+      customer_id TEXT REFERENCES customers(id),
+      reservation_id TEXT REFERENCES reservations(id),
+      experience_id TEXT REFERENCES experiences(id),
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
   ]);
 
   // Add _en columns to existing experiences tables (safe to run repeatedly)
@@ -140,4 +169,26 @@ export async function migrate() {
       // Column already exists — ignore
     }
   }
+
+  const reservationColumns = [
+    ["dietary_restrictions", "TEXT"],
+    ["accessibility_needs", "TEXT"],
+    ["interests", "TEXT"],
+    ["referral_source", "TEXT"],
+    ["capacity_held", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [col, type] of reservationColumns) {
+    try {
+      await db.execute(`ALTER TABLE reservations ADD COLUMN ${col} ${type}`);
+    } catch {
+      // Column already exists — ignore
+    }
+  }
+
+  await db.batch([
+    "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
+    "CREATE INDEX IF NOT EXISTS idx_reservations_availability ON reservations(availability_id)",
+    "CREATE INDEX IF NOT EXISTS idx_form_submissions_customer ON form_submissions(customer_id)",
+    "CREATE INDEX IF NOT EXISTS idx_content_blocks_page ON content_blocks(page_key)",
+  ]);
 }

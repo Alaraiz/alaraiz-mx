@@ -41,10 +41,6 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "/",
-    languages: {
-      "es-MX": "/",
-      "en-US": "/",
-    },
   },
 };
 
@@ -55,10 +51,12 @@ export default function RootLayout({
 }) {
   const organizationJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": ["Organization", "TravelAgency", "LocalBusiness"],
     name: "Raíz",
     url: "https://alaraiz.mx",
     logo: "https://alaraiz.mx/assets/favicon.svg",
+    areaServed: "Ciudad de México",
+    priceRange: "$$",
     sameAs: [
       "https://instagram.com/a.la.ra.iz",
       "https://instagram.com/recreobyraiz",
@@ -66,6 +64,43 @@ export default function RootLayout({
     ],
     description:
       "Experiencias de un día en la Ciudad de México, contadas por quienes la viven.",
+  };
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Raíz",
+    url: "https://alaraiz.mx",
+    inLanguage: ["es-MX", "en-US"],
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://alaraiz.mx/?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
+  };
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Experiencias de un día en Ciudad de México",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Recreo",
+        url: "https://alaraiz.mx/#recreo",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Détente",
+        url: "https://alaraiz.mx/detente/02",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: "Nueva experiencia",
+        url: "https://alaraiz.mx/nueva-experiencia",
+      },
+    ],
   };
 
   return (
@@ -85,7 +120,11 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd),
+            __html: JSON.stringify([
+              organizationJsonLd,
+              websiteJsonLd,
+              itemListJsonLd,
+            ]),
           }}
         />
       </head>

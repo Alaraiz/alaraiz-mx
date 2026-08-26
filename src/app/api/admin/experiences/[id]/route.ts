@@ -51,6 +51,17 @@ export async function DELETE(
   }
 
   try {
+    const reservations = await db.execute({
+      sql: "SELECT COUNT(*) AS total FROM reservations WHERE experience_id = ?",
+      args: [params.id],
+    });
+    if (Number(reservations.rows[0]?.total) > 0) {
+      return NextResponse.json(
+        { error: "No se puede eliminar una experiencia con reservas. Despublícala para conservar el historial." },
+        { status: 409 }
+      );
+    }
+    await db.execute({ sql: "DELETE FROM availability WHERE experience_id = ?", args: [params.id] });
     await db.execute({ sql: "DELETE FROM experiences WHERE id = ?", args: [params.id] });
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -41,6 +41,10 @@ export async function DELETE(
   }
 
   try {
+    await db.execute({
+      sql: "UPDATE experiences SET facilitator_id = NULL WHERE facilitator_id = ?",
+      args: [params.id],
+    });
     await db.execute({ sql: "DELETE FROM facilitators WHERE id = ?", args: [params.id] });
     return NextResponse.json({ ok: true });
   } catch (error) {

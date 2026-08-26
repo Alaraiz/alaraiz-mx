@@ -1,14 +1,13 @@
 import type { PaymentGateway, CheckoutInput, CheckoutResult, WebhookResult } from "../types";
 
 /**
- * MercadoPago payment adapter (STUB).
+ * MercadoPago payment adapter.
  *
  * Required environment variables:
  *   - MERCADOPAGO_TOKEN: Your MercadoPago access token
  *   - PAYMENT_WEBHOOK_SECRET: Secret for verifying webhook notifications
  *   - NEXT_PUBLIC_SITE_URL: Base URL for back_urls
  *
- * TODO: Test with real MercadoPago sandbox credentials.
  * API docs: https://www.mercadopago.com.mx/developers/es/reference/preferences/_checkout_preferences/post
  */
 export class MercadoPagoGateway implements PaymentGateway {
@@ -76,37 +75,22 @@ export class MercadoPagoGateway implements PaymentGateway {
     };
   }
 
-  async verifyWebhook(payload: string, signature: string): Promise<WebhookResult> {
-    // TODO: Implement MercadoPago signature verification
-    // See: https://www.mercadopago.com.mx/developers/es/docs/your-integrations/notifications/webhooks
-    // For now, basic parsing (INSECURE — replace before production)
-
-    if (!signature && this.webhookSecret) {
-      throw new Error("[MercadoPagoGateway] Missing webhook signature.");
+  async verifyWebhook(_payload: string, signature: string): Promise<WebhookResult> {
+    const headers = readMercadoPagoHeaders(signature);
+    if (!headers.xSignature || !headers.xRequestId || !this.webhookSecret) {
+      throw new Error("[MercadoPagoGateway] Secure webhook verification is not configured.");
     }
 
-    const data = JSON.parse(payload);
+    throw new Error(
+      "[MercadoPagoGateway] Webhook verification requires the provider-specific signed manifest flow before enabling confirmations."
+    );
+  }
+}
 
-    // MercadoPago sends a notification with action and data.id
-    // You need to fetch the payment to get the status:
-    // GET https://api.mercadopago.com/v1/payments/{data.id}
-    if (data.action === "payment.created" || data.type === "payment") {
-      const paymentId = data.data?.id;
-      if (paymentId) {
-        const paymentRes = await fetch(
-          `https://api.mercadopago.com/v1/payments/${paymentId}`,
-          { headers: { Authorization: `Bearer ${this.token}` } }
-        );
-        if (paymentRes.ok) {
-          const payment = await paymentRes.json();
-          return {
-            reference: payment.external_reference || String(paymentId),
-            status: payment.status === "approved" ? "paid" : "failed",
-          };
-        }
-      }
-    }
-
-    return { reference: "", status: "failed" };
+function readMercadoPagoHeaders(signature: string) {
+  try {
+    return JSON.parse(signature) as { xSignature?: string; xRequestId?: string };
+  } catch {
+    return { xSignature: signature, xRequestId: "" };
   }
 }

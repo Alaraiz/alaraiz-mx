@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/public/facilitators
  * Returns all published facilitators.

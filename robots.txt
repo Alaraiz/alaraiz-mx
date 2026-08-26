@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /recreo-guest-form
-Disallow: /nueva-experiencia
-
-Sitemap: https://alaraiz.mx/sitemap.xml

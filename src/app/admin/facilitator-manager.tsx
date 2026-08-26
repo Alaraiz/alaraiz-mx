@@ -120,7 +120,7 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+      <div className="admin-page-head">
         <p className="admin-muted">
           Gestiona los perfiles de los especialistas que guían cada experiencia.
         </p>
@@ -128,35 +128,28 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
           ＋ Nuevo facilitador
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1rem" }}>
+      <div className="admin-card-grid">
         {data.facilitators.map((facilitator) => (
           <button
-            className="admin-panel"
-            style={{ cursor: "pointer", textAlign: "left", padding: "0", overflow: "hidden" }}
+            className="admin-panel admin-resource-card"
             key={String(facilitator.id)}
             onClick={() => startEditing(facilitator)}
           >
             <div
+              className="admin-resource-image compact"
               style={{
-                height: 120,
                 backgroundImage: facilitator.photo_url
                   ? `url(${facilitator.photo_url})`
                   : "linear-gradient(135deg, #2a2a2a, #3a3a3a)",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                position: "relative",
               }}
             >
-              <span
-                className="admin-pill"
-                style={{ position: "absolute", top: 8, left: 8, background: "var(--admin-surface)" }}
-              >
+              <span className="admin-pill admin-status-pill">
                 {facilitator.is_published ? "PUBLICADO" : "BORRADOR"}
               </span>
             </div>
-            <div style={{ padding: "1rem" }}>
-              <h3 style={{ fontSize: "1rem" }}>{facilitator.name}</h3>
-              <p className="admin-muted" style={{ fontSize: "0.8rem", marginTop: "0.2rem" }}>
+            <div className="admin-resource-body">
+              <h3>{facilitator.name}</h3>
+              <p className="admin-muted">
                 {facilitator.role || "Sin rol asignado"}
               </p>
             </div>
@@ -183,7 +176,6 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
             </p>
             <h3>{editing ? String(editing.name) : "Completa el perfil"}</h3>
 
-            {/* Fields */}
             <div className="admin-form-grid">
               <label>
                 Nombre completo
@@ -214,20 +206,9 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
               <textarea name="bio" rows={4} defaultValue={String(active.bio || "")} placeholder="Una breve descripción que aparecerá en su perfil" />
             </label>
 
-            {/* Photo dropzone */}
             <label className="admin-kicker" style={{ marginTop: "0.5rem" }}>Foto de perfil</label>
             <div
-              style={{
-                border: "2px dashed var(--admin-border)",
-                borderRadius: 12,
-                padding: photoUrl ? "0" : "2rem 1rem",
-                textAlign: "center",
-                cursor: "pointer",
-                background: "var(--admin-surface-2)",
-                position: "relative",
-                overflow: "hidden",
-                transition: "border-color 0.2s",
-              }}
+              className={`admin-upload-zone${photoUrl ? "" : " is-empty"}`}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--admin-accent)"; }}
               onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--admin-border)"; }}
@@ -243,7 +224,8 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
                   <img
                     src={photoUrl}
                     alt="Foto"
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1 }}
+                    className="admin-upload-image"
+                    style={{ opacity: uploading ? 0.5 : 1 }}
                   />
                   <div className="admin-img-overlay" style={{
                     position: "absolute", inset: 0,
@@ -276,8 +258,7 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
               />
             </div>
 
-            {/* Publish toggle */}
-            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}>
+            <label className="admin-checkbox-row">
               <input
                 name="isPublished"
                 type="checkbox"
@@ -286,7 +267,6 @@ export default function FacilitatorManager({ data, refresh, notify }: Props) {
               Publicar en la landing
             </label>
 
-            {/* Actions */}
             <div className="admin-form-actions">
               {editing && (
                 <button

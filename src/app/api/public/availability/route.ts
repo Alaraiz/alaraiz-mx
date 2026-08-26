@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/public/availability?experienceId=<id>
  * Returns open availability slots for a given experience (or all published).

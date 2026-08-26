@@ -2,10 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "./db";
 import bcrypt from "bcryptjs";
+import { getAuthSecret } from "./auth-secret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-replace-me"
-);
+const SECRET = getAuthSecret();
 const COOKIE_NAME = "raiz_session";
 const EXPIRY = "7d";
 

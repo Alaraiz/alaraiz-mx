@@ -133,7 +133,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+      <div className="admin-page-head">
         <p className="admin-muted">
           Haz clic en una tarjeta para editarla y actualizar la landing.
         </p>
@@ -141,33 +141,26 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
           ＋ Nueva experiencia
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+      <div className="admin-card-grid">
         {data.experiences.map((experience) => (
           <button
-            className="admin-panel"
-            style={{ cursor: "pointer", textAlign: "left", padding: "0", overflow: "hidden" }}
+            className="admin-panel admin-resource-card"
             key={String(experience.id)}
             onClick={() => startEditing(experience)}
           >
             <div
+              className="admin-resource-image"
               style={{
-                height: 140,
                 backgroundImage: `url(${experience.cover_image_url || "/assets/exp-mesa.jpg"})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                position: "relative",
               }}
             >
-              <span
-                className="admin-pill"
-                style={{ position: "absolute", top: 8, left: 8, background: "var(--admin-surface)" }}
-              >
+              <span className="admin-pill admin-status-pill">
                 {experience.is_published ? "PUBLICADA" : "BORRADOR"}
               </span>
             </div>
-            <div style={{ padding: "1rem" }}>
-              <h3 style={{ fontSize: "1.1rem" }}>{experience.title}</h3>
-              <p className="admin-muted" style={{ fontSize: "0.8rem", marginTop: "0.3rem" }}>
+            <div className="admin-resource-body">
+              <h3>{experience.title}</h3>
+              <p className="admin-muted">
                 {experience.tag || "Sin etiqueta"} · {experience.duration || "Sin duración"} · Cupo{" "}
                 {experience.capacity}
               </p>
@@ -195,7 +188,6 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
             </p>
             <h3>{editing ? String(editing.title) : "Completa los datos"}</h3>
 
-            {/* Shared fields (not translatable) */}
             <div className="admin-form-grid">
               <label>
                 Duración
@@ -256,24 +248,14 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               </label>
             </div>
 
-            {/* Language tabs for translatable content */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.75rem" }}>
+            <div className="admin-panel-head" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
               <p className="admin-kicker" style={{ margin: 0 }}>Contenido</p>
-              <div style={{ display: "flex", gap: "0.25rem", marginLeft: "auto" }}>
+              <div className="admin-tabs" role="group" aria-label="Idioma del contenido">
                 <button
                   type="button"
                   className="admin-pill"
                   onClick={() => setContentLang("es")}
-                  style={{
-                    cursor: "pointer",
-                    background: contentLang === "es" ? "var(--admin-accent)" : "transparent",
-                    color: contentLang === "es" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                    border: "1px solid var(--admin-border)",
-                    borderRadius: 20,
-                    padding: "0.25rem 0.6rem",
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                  }}
+                  aria-pressed={contentLang === "es"}
                 >
                   ES
                 </button>
@@ -281,23 +263,13 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   type="button"
                   className="admin-pill"
                   onClick={() => setContentLang("en")}
-                  style={{
-                    cursor: "pointer",
-                    background: contentLang === "en" ? "var(--admin-accent)" : "transparent",
-                    color: contentLang === "en" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                    border: "1px solid var(--admin-border)",
-                    borderRadius: 20,
-                    padding: "0.25rem 0.6rem",
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                  }}
+                  aria-pressed={contentLang === "en"}
                 >
                   EN
                 </button>
               </div>
             </div>
 
-            {/* ES content */}
             <div style={{ display: contentLang === "es" ? "block" : "none" }}>
               <div className="admin-form-grid">
                 <label>
@@ -319,7 +291,6 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               </label>
             </div>
 
-            {/* EN content */}
             <div style={{ display: contentLang === "en" ? "block" : "none" }}>
               <div className="admin-form-grid">
                 <label>
@@ -341,20 +312,9 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               </label>
             </div>
 
-            {/* Image dropzone */}
             <label className="admin-kicker" style={{ marginTop: "0.5rem" }}>Imagen de portada</label>
             <div
-              style={{
-                border: "2px dashed var(--admin-border)",
-                borderRadius: 12,
-                padding: imageUrl && imageUrl !== "/assets/exp-mesa.jpg" ? "0" : "2rem 1rem",
-                textAlign: "center",
-                cursor: "pointer",
-                background: "var(--admin-surface-2)",
-                position: "relative",
-                overflow: "hidden",
-                transition: "border-color 0.2s",
-              }}
+              className={`admin-upload-zone${imageUrl && imageUrl !== "/assets/exp-mesa.jpg" ? "" : " is-empty"}`}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--admin-accent)"; }}
               onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--admin-border)"; }}
@@ -370,7 +330,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
                   <img
                     src={imageUrl}
                     alt="Portada"
-                    style={{ width: "100%", height: 180, objectFit: "cover", display: "block", opacity: uploading ? 0.5 : 1 }}
+                    className="admin-upload-image"
+                    style={{ opacity: uploading ? 0.5 : 1 }}
                   />
                   <div className="admin-img-overlay" style={{
                     position: "absolute", inset: 0,
@@ -403,8 +364,7 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               />
             </div>
 
-            {/* Publish toggle */}
-            <label style={{ display: "flex", flexDirection: "row", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}>
+            <label className="admin-checkbox-row">
               <input
                 name="isPublished"
                 type="checkbox"
@@ -413,7 +373,6 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               Publicar en la landing
             </label>
 
-            {/* Actions */}
             <div className="admin-form-actions">
               {editing && (
                 <button

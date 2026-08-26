@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, ensureMigrated } from "@/lib/db";
+import { ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
+import { confirmPaidReservation, markPaymentFailed } from "@/lib/reservations";
+
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/public/payments/webhook
@@ -12,11 +15,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await request.text();
-    const signature =
-      request.headers.get("stripe-signature") ||
-      request.headers.get("x-signature") ||
-      request.headers.get("x-request-id") ||
-      "";
+    const signature = JSON.stringify({
+      stripeSignature: request.headers.get("stripe-signature") || "",
+      xSignature: request.headers.get("x-signature") || "",
+      xRequestId: request.headers.get("x-request-id") || "",
+    });
 
     const gateway = getGateway();
     const result = await gateway.verifyWebhook(payload, signature);
@@ -26,33 +29,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.status === "paid") {
-      // Find and update the reservation
-      const reservation = await db.execute({
-        sql: "SELECT id, customer_id FROM reservations WHERE payment_reference = ?",
-        args: [result.reference],
-      });
-
-      if (reservation.rows.length > 0) {
-        const resId = reservation.rows[0].id;
-        const customerId = reservation.rows[0].customer_id;
-
-        await db.execute({
-          sql: `UPDATE reservations SET status = 'confirmed', payment_status = 'paid', payment_method = 'online', updated_at = datetime('now') WHERE id = ?`,
-          args: [resId],
-        });
-
-        // Update customer stage
-        await db.execute({
-          sql: `UPDATE customers SET stage = 'confirmado', updated_at = datetime('now') WHERE id = ?`,
-          args: [customerId],
-        });
+      const confirmation = await confirmPaidReservation(result.reference, "online");
+      if (!confirmation.ok && confirmation.status !== 404) {
+        return NextResponse.json({ error: confirmation.error }, { status: confirmation.status });
       }
     } else {
-      // Mark as failed
-      await db.execute({
-        sql: `UPDATE reservations SET payment_status = 'failed', updated_at = datetime('now') WHERE payment_reference = ?`,
-        args: [result.reference],
-      });
+      await markPaymentFailed(result.reference);
     }
 
     return NextResponse.json({ received: true });

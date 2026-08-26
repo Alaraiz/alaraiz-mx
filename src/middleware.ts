@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { getAuthSecret } from "@/lib/auth-secret";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "dev-secret-replace-me"
-);
+const SECRET = getAuthSecret();
 const COOKIE_NAME = "raiz_session";
 
 /** Routes restricted to admin role only (editors get 403) */

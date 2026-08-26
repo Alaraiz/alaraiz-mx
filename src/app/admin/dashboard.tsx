@@ -5,6 +5,7 @@ import FacilitatorManager from "./facilitator-manager";
 import CrmManager from "./crm-manager";
 import UserManager from "./user-manager";
 import CollectionManager from "./collection-manager";
+import ContentManager from "./content-manager";
 
 type Row = Record<string, string | number | null>;
 type Data = {
@@ -14,6 +15,7 @@ type Data = {
   reservations: Row[];
   events: Row[];
   folders: Row[];
+  submissions: Row[];
   facilitators: Row[];
   collections: Row[];
 };
@@ -25,12 +27,14 @@ const allTabs = [
   ["experiences", "Experiencias"],
   ["facilitators", "Facilitadores"],
   ["calendar", "Calendario"],
+  ["collections", "Colecciones"],
+  ["content", "Contenido"],
   ["crm", "CRM"],
   ["payments", "Pagos"],
   ["settings", "Configuración"],
 ];
 
-const adminOnlyTabs = new Set(["crm", "payments"]);
+const adminOnlyTabs = new Set(["collections", "crm", "payments"]);
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
@@ -43,6 +47,7 @@ export default function AdminDashboard() {
     reservations: [],
     events: [],
     folders: [],
+    submissions: [],
     facilitators: [],
     collections: [],
   });
@@ -127,7 +132,7 @@ export default function AdminDashboard() {
               onClick={() => setTab(item[0])}
               key={item[0]}
             >
-              <span>{({ overview: "◌", experiences: "✦", facilitators: "☉", calendar: "▦", crm: "♧", payments: "↗", settings: "⚙" } as Record<string, string>)[item[0]] || "·"}</span>
+              <span>{({ overview: "◌", experiences: "✦", facilitators: "☉", calendar: "▦", collections: "◫", content: "✎", crm: "♧", payments: "↗", settings: "⚙" } as Record<string, string>)[item[0]] || "·"}</span>
               {item[1]}
             </button>
           ))}
@@ -166,6 +171,8 @@ export default function AdminDashboard() {
             )}
             {tab === "facilitators" && <FacilitatorManager data={data} refresh={refresh} notify={notify} />}
             {tab === "calendar" && <Calendar data={data} refresh={refresh} notify={notify} />}
+            {tab === "collections" && <CollectionManager notify={notify} />}
+            {tab === "content" && <ContentManager notify={notify} />}
             {tab === "crm" && (
               <CrmManager data={data} refresh={refresh} notify={notify} />
             )}
@@ -284,20 +291,19 @@ function Overview({
 
   return (
     <>
-      {/* Operational summary */}
       <div className="admin-panel">
         <p className="admin-kicker">{greeting}{userName ? `, ${userName}` : ""}</p>
-        <h2 style={{ fontSize: "1.3rem", marginTop: "0.3rem" }}>
-          Todo empieza <em style={{ color: "var(--admin-accent)" }}>aquí.</em>
+        <h2 className="admin-summary-title">
+          Todo empieza <em>aquí.</em>
         </h2>
-        <p className="admin-muted" style={{ marginTop: "0.5rem", fontSize: "0.85rem", lineHeight: 1.5 }}>
+        <p className="admin-muted admin-summary-copy">
           {upcomingDates > 0 ? (
-            <>Tienes <strong style={{ color: "var(--admin-accent)" }}>{upcomingDates} salida{upcomingDates !== 1 ? "s" : ""}</strong> próxima{upcomingDates !== 1 ? "s" : ""}.</>
+            <>Tienes <strong>{upcomingDates} salida{upcomingDates !== 1 ? "s" : ""}</strong> próxima{upcomingDates !== 1 ? "s" : ""}.</>
           ) : (
             <>No hay salidas programadas.</>
           )}
           {pendingReservations > 0 && (
-            <> Hay <strong style={{ color: "#e95" }}>{pendingReservations} reserva{pendingReservations !== 1 ? "s" : ""}</strong> pendiente{pendingReservations !== 1 ? "s" : ""} de pago.</>
+            <> Hay <strong className="is-warning">{pendingReservations} reserva{pendingReservations !== 1 ? "s" : ""}</strong> pendiente{pendingReservations !== 1 ? "s" : ""} de pago.</>
           )}
           {data.customers.length > 0 && (
             <> {data.customers.length} cliente{data.customers.length !== 1 ? "s" : ""} en tu CRM.</>
@@ -305,8 +311,7 @@ function Overview({
         </p>
       </div>
 
-      {/* Quick stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+      <div className="admin-stat-grid">
         {(
           [
             ["Experiencias", data.experiences.length, "experiences"],
@@ -317,8 +322,7 @@ function Overview({
           ] as [string, number, string][]
         ).map((s) => (
           <button
-            className="admin-panel"
-            style={{ cursor: "pointer", textAlign: "left" }}
+            className="admin-panel admin-stat-card"
             onClick={() => setTab(s[2])}
             key={s[0]}
           >
@@ -328,9 +332,8 @@ function Overview({
         ))}
       </div>
 
-      {/* Revenue card with chart */}
       <div className="admin-panel">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+        <div className="admin-panel-head">
           <div>
             <p className="admin-kicker">Ingresos</p>
             <h3 style={{ fontSize: "1.6rem", margin: "0.2rem 0 0" }}>
@@ -343,22 +346,13 @@ function Overview({
               </p>
             )}
           </div>
-          {/* Range selector pills */}
-          <div style={{ display: "flex", gap: "0.3rem" }}>
+          <div className="admin-tabs" role="group" aria-label="Rango de ingresos">
             {rangeOptions.map(([key, label]) => (
               <button
                 key={key}
                 className="admin-pill"
                 onClick={(e) => { e.stopPropagation(); setChartRange(key); }}
-                style={{
-                  cursor: "pointer",
-                  background: chartRange === key ? "var(--admin-accent)" : "transparent",
-                  color: chartRange === key ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                  border: "1px solid var(--admin-border)",
-                  borderRadius: 20,
-                  padding: "0.25rem 0.6rem",
-                  fontSize: "0.68rem",
-                }}
+                aria-pressed={chartRange === key}
               >
                 {label}
               </button>
@@ -366,29 +360,24 @@ function Overview({
           </div>
         </div>
 
-        {/* Period revenue */}
         {rangeRevenue > 0 && rangeRevenue !== totalRevenue && (
           <p className="admin-muted" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
             ${rangeRevenue.toLocaleString("es-MX")} en este periodo
           </p>
         )}
 
-        {/* Bar chart */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: chartData.length > 7 ? "0.2rem" : "0.4rem", height: 72 }}>
+        <div className="admin-chart" data-dense={chartData.length > 7}>
           {chartData.map((bar, i) => (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.2rem" }}>
+            <div key={i} className="admin-chart-item">
               <div
+                className="admin-chart-bar"
                 style={{
-                  width: "100%",
-                  maxWidth: chartData.length > 7 ? 24 : 32,
                   height: `${Math.max((bar.value / chartMax) * 52, 3)}px`,
-                  background: bar.value > 0 ? "var(--admin-accent)" : "var(--admin-border)",
-                  borderRadius: 4,
-                  transition: "height 0.3s",
                 }}
+                data-empty={bar.value <= 0}
                 title={`$${bar.value.toLocaleString("es-MX")}`}
               />
-              <span className="admin-muted" style={{ fontSize: chartData.length > 7 ? "0.52rem" : "0.6rem", textTransform: "capitalize", whiteSpace: "nowrap" }}>
+              <span className="admin-muted admin-chart-label">
                 {bar.label}
               </span>
             </div>
@@ -404,6 +393,7 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
   const [formData, setFormData] = useState({ experienceId: "", date: "", time: "10:00", capacity: "12" });
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -443,6 +433,14 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDayOfWeek = (new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() + 6) % 7; // Monday-based
   const today = new Date().toISOString().slice(0, 10);
+  const selectedSlot = sortedDates.find((slot) => String(slot.id) === selectedSlotId) || null;
+  const selectedReservations = selectedSlot ? reservationsByAvailability[String(selectedSlot.id)] || [] : [];
+  const selectedExperience = selectedSlot
+    ? data.experiences.find((experience) => String(experience.id) === String(selectedSlot.experience_id))
+    : null;
+  const selectedFacilitator = selectedExperience?.facilitator_id
+    ? data.facilitators.find((facilitator) => String(facilitator.id) === String(selectedExperience.facilitator_id))
+    : null;
 
   function prevMonth() {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
@@ -480,31 +478,74 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
     }
   }
 
+  async function updateSlot(
+    slot: Row,
+    updates: { capacity?: number; status?: string }
+  ) {
+    const currentCapacity = Number(slot.capacity) || 1;
+    const booked = Number(slot.booked) || 0;
+    const nextCapacity = updates.capacity ?? currentCapacity;
+    if (nextCapacity < booked) {
+      notify(`No puedes bajar de ${booked} cupos ya reservados.`);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/availability/${String(slot.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          capacity: nextCapacity,
+          status: updates.status ?? String(slot.status || "open"),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar la fecha.");
+      notify("Fecha actualizada.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo actualizar la fecha.");
+    }
+  }
+
+  async function deleteReservation(reservation: Row) {
+    const paid = String(reservation.payment_status) === "paid";
+    if (paid) {
+      notify("No se puede borrar desde calendario una reserva pagada. Cámbiala desde pagos/CRM para conservar historial.");
+      return;
+    }
+    const label = `${String(reservation.name || "esta persona")} · ${String(reservation.attendees_count || 1)} pax`;
+    if (!window.confirm(`¿Eliminar ${label} y liberar sus cupos?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/reservations/${String(reservation.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo eliminar la reserva.");
+      notify("Reserva eliminada y cupos liberados.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo eliminar la reserva.");
+    }
+  }
+
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+      <div className="admin-page-head">
         <div>
           <p className="admin-kicker">Calendario de salidas</p>
           <p className="admin-muted">
             {sortedDates.length} fecha{sortedDates.length !== 1 ? "s" : ""} programada{sortedDates.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-          {/* View toggle */}
-          <div style={{ display: "flex", gap: "0.25rem", marginRight: "0.5rem" }}>
+        <div className="admin-toolbar">
+          <div className="admin-tabs" role="group" aria-label="Vista de calendario">
             <button
               type="button"
               className="admin-pill"
               onClick={() => setView("calendar")}
-              style={{
-                cursor: "pointer",
-                background: view === "calendar" ? "var(--admin-accent)" : "transparent",
-                color: view === "calendar" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                border: "1px solid var(--admin-border)",
-                borderRadius: 20,
-                padding: "0.25rem 0.6rem",
-                fontSize: "0.68rem",
-              }}
+              aria-pressed={view === "calendar"}
             >
               Mes
             </button>
@@ -512,15 +553,7 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
               type="button"
               className="admin-pill"
               onClick={() => setView("list")}
-              style={{
-                cursor: "pointer",
-                background: view === "list" ? "var(--admin-accent)" : "transparent",
-                color: view === "list" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                border: "1px solid var(--admin-border)",
-                borderRadius: 20,
-                padding: "0.25rem 0.6rem",
-                fontSize: "0.68rem",
-              }}
+              aria-pressed={view === "list"}
             >
               Lista
             </button>
@@ -534,10 +567,9 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
         </div>
       </div>
 
-      {/* Create availability form */}
       {showForm && (
         <form className="admin-panel admin-inline-form" onSubmit={createSlot}>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="admin-form-wide">
             Experiencia
             <select
               value={formData.experienceId}
@@ -589,32 +621,26 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
         </form>
       )}
 
-      {/* CALENDAR GRID VIEW */}
       {view === "calendar" && (
-        <div className="admin-panel" style={{ padding: "1rem" }}>
-          {/* Month navigation */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <div className="admin-panel admin-calendar-panel">
+          <div className="admin-calendar-nav">
             <button type="button" className="admin-btn admin-small" onClick={prevMonth}>←</button>
             <strong style={{ fontSize: "0.95rem", textTransform: "capitalize" }}>{monthYear}</strong>
             <button type="button" className="admin-btn admin-small" onClick={nextMonth}>→</button>
           </div>
 
-          {/* Weekday headers */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px", marginBottom: "2px" }}>
+          <div className="admin-calendar-weekdays">
             {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
-              <div key={d} style={{ textAlign: "center", fontSize: "0.65rem", color: "var(--admin-muted)", padding: "0.3rem 0", fontWeight: 600 }}>
+              <div key={d}>
                 {d}
               </div>
             ))}
           </div>
 
-          {/* Days grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px" }}>
-            {/* Empty cells before first day */}
+          <div className="admin-calendar-grid">
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} style={{ minHeight: 56 }} />
+              <div key={`empty-${i}`} className="admin-calendar-empty" />
             ))}
-            {/* Day cells */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dateKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -625,48 +651,25 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
               return (
                 <div
                   key={day}
-                  style={{
-                    minHeight: 56,
-                    padding: "0.2rem 0.3rem",
-                    borderRadius: 6,
-                    background: isToday ? "var(--admin-surface-2)" : "transparent",
-                    border: isToday ? "1px solid var(--admin-accent)" : "1px solid transparent",
-                    position: "relative",
-                    cursor: hasSlots ? "default" : undefined,
-                  }}
+                  className={`admin-calendar-day${isToday ? " is-today" : ""}${hasSlots ? " has-slots" : ""}`}
                 >
-                  <span style={{
-                    fontSize: "0.7rem",
-                    fontWeight: isToday ? 700 : 400,
-                    color: isToday ? "var(--admin-accent)" : "var(--admin-text)",
-                  }}>
+                  <span>
                     {day}
                   </span>
-                  {/* Slot indicators */}
                   {daySlots.map((slot) => {
                     const booked = Number(slot.booked) || 0;
                     const cap = Number(slot.capacity) || 12;
                     const full = booked >= cap;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={String(slot.id)}
                         title={`${String(slot.title)} · ${String(slot.time)} · ${booked}/${cap}`}
-                        style={{
-                          fontSize: "0.55rem",
-                          lineHeight: 1.2,
-                          padding: "0.15rem 0.25rem",
-                          marginTop: "0.15rem",
-                          borderRadius: 3,
-                          background: full ? "rgba(229,57,53,0.15)" : "rgba(var(--admin-accent-rgb, 180,120,40),0.15)",
-                          color: full ? "#e55" : "var(--admin-accent)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          fontWeight: 500,
-                        }}
+                        className={`admin-calendar-slot${full ? " is-full" : ""}`}
+                        onClick={() => setSelectedSlotId(String(slot.id))}
                       >
                         {String(slot.time).slice(0, 5)} · {String(slot.title).slice(0, 10)}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -676,7 +679,6 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
         </div>
       )}
 
-      {/* LIST VIEW */}
       {view === "list" && (
         <>
           {sortedDates.length === 0 ? (
@@ -684,15 +686,15 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
               <p className="admin-muted">No hay fechas programadas. Crea una para empezar.</p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div className="admin-list-stack">
               {sortedDates.map((slot) => {
                 const booked = Number(slot.booked) || 0;
                 const capacity = Number(slot.capacity) || 12;
                 const pct = Math.min((booked / capacity) * 100, 100);
                 const avReservations = reservationsByAvailability[String(slot.id)] || [];
                 return (
-                  <div key={String(slot.id)} className="admin-panel" style={{ padding: "0.8rem 1rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                  <div key={String(slot.id)} className="admin-panel admin-slot-row">
+                    <div className="admin-slot-content">
                       <div style={{ minWidth: 80 }}>
                         <strong style={{ fontSize: "0.9rem" }}>{formatCalDate(String(slot.date))}</strong>
                         <span className="admin-muted" style={{ display: "block", fontSize: "0.75rem" }}>{String(slot.time)}</span>
@@ -700,29 +702,93 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
                       <div style={{ flex: 1, minWidth: 120 }}>
                         <span style={{ fontSize: "0.85rem" }}>{String(slot.title)}</span>
                       </div>
-                      <div style={{ minWidth: 100, textAlign: "right" }}>
+                      <div className="admin-capacity">
                         <span style={{ fontSize: "0.8rem" }}>
                           {booked}/{capacity} cupos
                         </span>
-                        <div style={{ height: 4, background: "var(--admin-border)", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: pct > 80 ? "#e55" : "var(--admin-accent)", borderRadius: 2, transition: "width 0.3s" }} />
+                        <div className="admin-capacity-track">
+                          <div className="admin-capacity-fill" style={{ width: `${pct}%` }} data-full={pct > 80} />
                         </div>
                       </div>
                       <span className="admin-muted" style={{ fontSize: "0.7rem", textTransform: "uppercase" }}>
                         {String(slot.status)}
                       </span>
+                      <div className="admin-slot-actions" aria-label="Acciones de cupo">
+                        <button
+                          type="button"
+                          className="admin-btn admin-small"
+                          onClick={() => setSelectedSlotId(String(slot.id))}
+                        >
+                          Ver bitácora
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn admin-small"
+                          onClick={() => updateSlot(slot, { capacity: capacity + 1 })}
+                        >
+                          +1 cupo
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn admin-small"
+                          onClick={() => updateSlot(slot, { capacity: capacity + 5 })}
+                        >
+                          +5 cupos
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn admin-small"
+                          onClick={() =>
+                            updateSlot(slot, {
+                              status: String(slot.status) === "open" ? "closed" : "open",
+                            })
+                          }
+                        >
+                          {String(slot.status) === "open" ? "Cerrar" : "Abrir"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="admin-slot-meta">
+                      <span>
+                        {capacity - booked} disponible{capacity - booked !== 1 ? "s" : ""}
+                      </span>
+                      <span>
+                        {avReservations.length} contacto{avReservations.length !== 1 ? "s" : ""}
+                      </span>
                     </div>
                     {avReservations.length > 0 && (
-                      <div style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid var(--admin-border)" }}>
+                      <div className="admin-slot-reservations">
                         {avReservations.map((r) => (
-                          <div key={String(r.id)} style={{ display: "flex", gap: "0.5rem", fontSize: "0.78rem", padding: "0.2rem 0", color: "var(--admin-muted)" }}>
-                            <span>{String(r.name)}</span>
+                          <div key={String(r.id)} className="admin-slot-contact">
+                            <span className="admin-slot-contact-name">{String(r.name || "Sin nombre")}</span>
                             <span>·</span>
                             <span>{String(r.attendees_count)} pax</span>
+                            <span>·</span>
+                            <a href={`mailto:${String(r.email)}`}>{String(r.email || "Sin correo")}</a>
+                            {r.phone && (
+                              <>
+                                <span>·</span>
+                                <a href={`https://wa.me/${String(r.phone).replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                                  {String(r.phone)}
+                                </a>
+                              </>
+                            )}
                             <span>·</span>
                             <span style={{ color: String(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
                               {String(r.payment_status)}
                             </span>
+                            {String(r.payment_status) !== "paid" && (
+                              <>
+                                <span>·</span>
+                                <button
+                                  type="button"
+                                  className="admin-link-button"
+                                  onClick={() => deleteReservation(r)}
+                                >
+                                  Eliminar
+                                </button>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -733,6 +799,66 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
             </div>
           )}
         </>
+      )}
+
+      {selectedSlot && (
+        <div className="admin-modal-backdrop" onClick={() => setSelectedSlotId(null)}>
+          <section className="admin-panel admin-modal admin-slot-log" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="admin-modal-close" onClick={() => setSelectedSlotId(null)}>
+              ×
+            </button>
+            <p className="admin-kicker">Bitácora de salida</p>
+            <h3>{String(selectedSlot.title)}</h3>
+            <div className="admin-log-grid">
+              <p><strong>Fecha</strong><span>{formatCalDate(String(selectedSlot.date))} · {String(selectedSlot.time)}</span></p>
+              <p><strong>Cupos</strong><span>{Number(selectedSlot.booked) || 0}/{Number(selectedSlot.capacity) || 12}</span></p>
+              <p><strong>Estatus</strong><span>{String(selectedSlot.status || "open")}</span></p>
+              <p><strong>Anfitrión</strong><span>{String(selectedFacilitator?.name || "Sin asignar")}</span></p>
+              <p><strong>Colección</strong><span>{String(selectedExperience?.collection || "Sin colección")}</span></p>
+              <p><strong>Zona</strong><span>{String(selectedExperience?.zone || "Sin zona")}</span></p>
+            </div>
+            <div className="admin-slot-actions admin-slot-log-actions">
+              <button type="button" className="admin-btn admin-small" onClick={() => updateSlot(selectedSlot, { capacity: (Number(selectedSlot.capacity) || 12) + 1 })}>+1 cupo</button>
+              <button type="button" className="admin-btn admin-small" onClick={() => updateSlot(selectedSlot, { capacity: (Number(selectedSlot.capacity) || 12) + 5 })}>+5 cupos</button>
+              <button type="button" className="admin-btn admin-small" onClick={() => updateSlot(selectedSlot, { status: String(selectedSlot.status) === "open" ? "closed" : "open" })}>
+                {String(selectedSlot.status) === "open" ? "Cerrar fecha" : "Abrir fecha"}
+              </button>
+            </div>
+            <div className="admin-log-section">
+              <p className="admin-kicker">Personas reservadas ({selectedReservations.length})</p>
+              {selectedReservations.length === 0 ? (
+                <p className="admin-empty">Todavía no hay personas registradas para esta salida.</p>
+              ) : (
+                selectedReservations.map((reservation) => (
+                  <article key={String(reservation.id)} className="admin-log-reservation">
+                    <div>
+                      <strong>{String(reservation.name || "Sin nombre")}</strong>
+                      <span className="admin-muted">{String(reservation.email || "Sin correo")} · {String(reservation.phone || "Sin teléfono")}</span>
+                    </div>
+                    <div className="admin-log-reservation-meta">
+                      <span>{String(reservation.attendees_count)} pax</span>
+                      <span>{String(reservation.payment_status)}</span>
+                      <span>${Number(reservation.amount || 0).toLocaleString("es-MX")}</span>
+                    </div>
+                    {(reservation.dietary_restrictions || reservation.accessibility_needs || reservation.interests || reservation.referral_source) && (
+                      <div className="admin-crm-intake">
+                        {reservation.dietary_restrictions && <p><strong>Alergias/restricciones:</strong> {String(reservation.dietary_restrictions)}</p>}
+                        {reservation.accessibility_needs && <p><strong>Movilidad/accesibilidad:</strong> {String(reservation.accessibility_needs)}</p>}
+                        {reservation.interests && <p><strong>Intereses/contexto:</strong> {String(reservation.interests)}</p>}
+                        {reservation.referral_source && <p><strong>Origen:</strong> {String(reservation.referral_source)}</p>}
+                      </div>
+                    )}
+                    {String(reservation.payment_status) !== "paid" && (
+                      <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
+                        Eliminar y liberar cupos
+                      </button>
+                    )}
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </>
   );
@@ -757,7 +883,7 @@ function Payments({ data }: { data: Data }) {
       <div className="admin-panel">
         <p className="admin-kicker">Cobros directos</p>
         <h3 style={{ marginTop: "0.3rem" }}>Pasarela de pago</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+        <div className="admin-metric-grid">
           <div>
             <span className="admin-muted" style={{ fontSize: "0.72rem" }}>Total reservas</span>
             <strong style={{ display: "block", fontSize: "1.3rem" }}>{data.reservations.length}</strong>
@@ -782,23 +908,16 @@ function Payments({ data }: { data: Data }) {
           <p className="admin-muted">No hay reservas aún.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+        <div className="admin-list-stack">
           {data.reservations.map((r) => (
-            <div key={String(r.id)} className="admin-panel" style={{ padding: "0.7rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 120 }}>
+            <div key={String(r.id)} className="admin-panel admin-payment-row">
+              <div className="admin-list-main">
                 <strong style={{ fontSize: "0.85rem" }}>{String(r.name || "Sin nombre")}</strong>
                 <span className="admin-muted" style={{ display: "block", fontSize: "0.75rem" }}>{String(r.title || "")}</span>
               </div>
               <span style={{ fontSize: "0.8rem" }}>{Number(r.attendees_count)} pax</span>
               <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>${Number(r.amount).toLocaleString("es-MX")}</span>
-              <span style={{
-                fontSize: "0.7rem",
-                padding: "0.2rem 0.5rem",
-                borderRadius: 4,
-                background: r.payment_status === "paid" ? "#6c62" : "#e952",
-                color: r.payment_status === "paid" ? "#6c6" : "#e95",
-                textTransform: "uppercase",
-              }}>
+              <span className={`admin-badge ${r.payment_status === "paid" ? "success" : "warning"}`}>
                 {String(r.payment_status)}
               </span>
             </div>
@@ -810,7 +929,7 @@ function Payments({ data }: { data: Data }) {
 }
 
 function Settings({ notify, role }: { notify: (s: string) => void; role: string }) {
-  const [subTab, setSubTab] = useState<"security" | "users" | "collections">("security");
+  const [subTab, setSubTab] = useState<"security" | "users">("security");
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -825,21 +944,12 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Sub-tab navigation */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+    <div className="admin-section-stack">
+      <div className="admin-tabs" role="group" aria-label="Configuración">
         <button
           className="admin-pill"
           onClick={() => setSubTab("security")}
-          style={{
-            cursor: "pointer",
-            background: subTab === "security" ? "var(--admin-accent)" : "transparent",
-            color: subTab === "security" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-            border: "1px solid var(--admin-border)",
-            borderRadius: 20,
-            padding: "0.3rem 0.7rem",
-            fontSize: "0.75rem",
-          }}
+          aria-pressed={subTab === "security"}
         >
           Seguridad
         </button>
@@ -847,39 +957,13 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
           <button
             className="admin-pill"
             onClick={() => setSubTab("users")}
-            style={{
-              cursor: "pointer",
-              background: subTab === "users" ? "var(--admin-accent)" : "transparent",
-              color: subTab === "users" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-              border: "1px solid var(--admin-border)",
-              borderRadius: 20,
-              padding: "0.3rem 0.7rem",
-              fontSize: "0.75rem",
-            }}
+            aria-pressed={subTab === "users"}
           >
             Usuarios
           </button>
         )}
-        {role === "admin" && (
-          <button
-            className="admin-pill"
-            onClick={() => setSubTab("collections")}
-            style={{
-              cursor: "pointer",
-              background: subTab === "collections" ? "var(--admin-accent)" : "transparent",
-              color: subTab === "collections" ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-              border: "1px solid var(--admin-border)",
-              borderRadius: 20,
-              padding: "0.3rem 0.7rem",
-              fontSize: "0.75rem",
-            }}
-          >
-            Colecciones
-          </button>
-        )}
       </div>
 
-      {/* Security sub-tab */}
       {subTab === "security" && (
         <form className="admin-form admin-panel" onSubmit={submit}>
           <p className="admin-kicker">Seguridad</p>
@@ -896,11 +980,7 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
         </form>
       )}
 
-      {/* Users sub-tab (admin only) */}
       {subTab === "users" && role === "admin" && <UserManager notify={notify} />}
-
-      {/* Collections sub-tab (admin only) */}
-      {subTab === "collections" && role === "admin" && <CollectionManager notify={notify} />}
     </div>
   );
 }

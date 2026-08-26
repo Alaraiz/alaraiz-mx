@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminEmail } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { releaseReservationCapacity } from "@/lib/reservations";
 
 export async function PUT(
   request: NextRequest,
@@ -45,6 +46,13 @@ export async function DELETE(
   }
 
   try {
+    const reservations = await db.execute({
+      sql: "SELECT id FROM reservations WHERE customer_id = ?",
+      args: [params.id],
+    });
+    for (const reservation of reservations.rows) {
+      await releaseReservationCapacity(String(reservation.id));
+    }
     await db.execute({ sql: "DELETE FROM crm_events WHERE customer_id = ?", args: [params.id] });
     await db.execute({ sql: "DELETE FROM reservations WHERE customer_id = ?", args: [params.id] });
     await db.execute({ sql: "DELETE FROM customers WHERE id = ?", args: [params.id] });

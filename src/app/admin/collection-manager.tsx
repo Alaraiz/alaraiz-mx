@@ -126,9 +126,8 @@ export default function CollectionManager({ notify }: Props) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="admin-section-stack">
+      <div className="admin-page-head">
         <div>
           <p className="admin-kicker">Catálogo</p>
           <p className="admin-muted">Agrupa experiencias y facilitadores por colección.</p>
@@ -140,14 +139,12 @@ export default function CollectionManager({ notify }: Props) {
         )}
       </div>
 
-      {/* Create / Edit form */}
       {showForm && (
         <form
           className="admin-panel admin-inline-form"
           onSubmit={handleSubmit}
-          style={{ padding: "1rem" }}
         >
-          <p style={{ gridColumn: "1 / -1", margin: 0, fontWeight: 600, fontSize: "0.9rem", color: "var(--admin-text)" }}>
+          <p className="admin-form-title">
             {editing ? "Editar colección" : "Nueva colección"}
           </p>
           <label>
@@ -169,7 +166,7 @@ export default function CollectionManager({ notify }: Props) {
               placeholder="E.g. Collection III"
             />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="admin-form-wide">
             Descripción (opcional)
             <input
               type="text"
@@ -178,7 +175,7 @@ export default function CollectionManager({ notify }: Props) {
               placeholder="Breve descripción de la colección"
             />
           </label>
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div className="admin-form-row-actions">
             <button type="button" className="admin-btn" onClick={resetForm}>
               Cancelar
             </button>
@@ -189,9 +186,8 @@ export default function CollectionManager({ notify }: Props) {
         </form>
       )}
 
-      {/* Collections list */}
-      <div className="admin-panel" style={{ padding: "1rem" }}>
-        <p className="admin-muted" style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+      <div className="admin-panel admin-list-panel">
+        <p className="admin-muted admin-list-count">
           {collections.length} colección{collections.length !== 1 ? "es" : ""}
         </p>
         {collections.length === 0 ? (
@@ -200,28 +196,14 @@ export default function CollectionManager({ notify }: Props) {
           collections.map((col) => (
             <div
               key={col.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.7rem",
-                padding: "0.5rem 0.4rem",
-                borderBottom: "1px solid var(--admin-border)",
-              }}
+              className="admin-list-row"
             >
-              {/* Status dot */}
               <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: col.is_active ? "var(--admin-accent)" : "var(--admin-muted)",
-                  flexShrink: 0,
-                }}
+                className={`admin-status-dot ${col.is_active ? "is-active" : "is-inactive"}`}
                 title={col.is_active ? "Activa" : "Inactiva"}
               />
 
-              {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="admin-list-main">
                 <strong style={{ fontSize: "0.85rem" }}>{col.name}</strong>
                 {col.name_en && (
                   <span className="admin-muted" style={{ fontSize: "0.72rem", marginLeft: "0.4rem" }}>
@@ -235,8 +217,7 @@ export default function CollectionManager({ notify }: Props) {
                 )}
               </div>
 
-              {/* Actions */}
-              <div style={{ display: "flex", gap: "0.3rem", flexShrink: 0 }}>
+              <div className="admin-row-actions">
                 <button
                   className="admin-btn admin-small"
                   onClick={() => toggleActive(col)}

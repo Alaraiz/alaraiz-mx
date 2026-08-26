@@ -10,6 +10,7 @@ type Props = {
     reservations: Row[];
     events: Row[];
     folders: Row[];
+    submissions: Row[];
   };
   refresh: () => void;
   notify: (message: string) => void;
@@ -36,21 +37,37 @@ function stageLabel(value: unknown) {
 export default function CrmManager({ data, refresh, notify }: Props) {
   const [stage, setStage] = useState("todos");
   const [search, setSearch] = useState("");
+  const [source, setSource] = useState("todos");
+  const [payment, setPayment] = useState("todos");
+  const [experience, setExperience] = useState("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const sourceOptions = useMemo(() => {
+    const values = new Set(data.customers.map((customer) => text(customer.source)).filter(Boolean));
+    return ["todos", ...Array.from(values).sort()];
+  }, [data.customers]);
+
   const filtered = useMemo(
     () =>
       data.customers.filter((customer) => {
+        const customerReservations = data.reservations.filter(
+          (reservation) => text(reservation.customer_id) === text(customer.id)
+        );
         const haystack =
-          `${text(customer.name)} ${text(customer.email)} ${text(customer.phone)}`.toLowerCase();
+          `${text(customer.name)} ${text(customer.email)} ${text(customer.phone)} ${text(customer.notes)}`.toLowerCase();
         return (
           (stage === "todos" || text(customer.stage) === stage) &&
+          (source === "todos" || text(customer.source) === source) &&
+          (payment === "todos" ||
+            customerReservations.some((reservation) => text(reservation.payment_status) === payment)) &&
+          (experience === "todos" ||
+            customerReservations.some((reservation) => text(reservation.experience_id) === experience)) &&
           (!search.trim() || haystack.includes(search.toLowerCase().trim()))
         );
       }),
-    [data.customers, stage, search]
+    [data.customers, data.reservations, experience, payment, source, stage, search]
   );
 
   const selected =
@@ -70,6 +87,14 @@ export default function CrmManager({ data, refresh, notify }: Props) {
         ? data.reservations.filter((r) => text(r.customer_id) === text(selected.id))
         : [],
     [selected, data.reservations]
+  );
+
+  const customerSubmissions = useMemo(
+    () =>
+      selected
+        ? data.submissions.filter((item) => text(item.customer_id) === text(selected.id))
+        : [],
+    [selected, data.submissions]
   );
 
   async function createCustomer(e: FormEvent<HTMLFormElement>) {
@@ -115,50 +140,92 @@ export default function CrmManager({ data, refresh, notify }: Props) {
     }
   }
 
+  async function updateCustomer(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selected) return;
+    const values = Object.fromEntries(new FormData(e.currentTarget).entries());
+    try {
+      const res = await fetch(`/api/admin/customers/${text(selected.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          source: values.source,
+          stage: values.stage,
+          notes: values.notes,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al actualizar cliente.");
+      notify("Contacto actualizado.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error al actualizar cliente.");
+    }
+  }
+
+  async function deleteCustomer() {
+    if (!selected) return;
+    if (!window.confirm(`¿Eliminar a ${text(selected.name)}? También se borrarán sus reservas y se liberarán cupos pendientes.`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/customers/${text(selected.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al borrar contacto.");
+      notify("Contacto eliminado.");
+      setSelectedId(null);
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error al borrar contacto.");
+    }
+  }
+
+  async function deleteReservation(reservation: Row) {
+    if (text(reservation.payment_status) === "paid") {
+      notify("No se puede borrar una reserva pagada desde CRM. Cambia su estado primero si aplica un reembolso/cancelación.");
+      return;
+    }
+    if (!window.confirm(`¿Eliminar esta reserva de ${text(reservation.title)} y liberar cupos?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/reservations/${text(reservation.id)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Error al borrar reserva.");
+      notify("Reserva eliminada y cupos liberados.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Error al borrar reserva.");
+    }
+  }
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 1fr" : "1fr", gap: "1rem" }}>
-      {/* Left: List */}
+    <div className={`admin-crm-layout${selected ? " has-selection" : ""}`}>
       <div>
-        {/* Stage filter pills */}
-        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+        <div className="admin-tabs admin-crm-filters" role="group" aria-label="Etapas del CRM">
           {stages.map((item) => (
             <button
               key={item[0]}
               className="admin-pill"
-              style={{
-                cursor: "pointer",
-                background: stage === item[0] ? "var(--admin-accent)" : "transparent",
-                color: stage === item[0] ? "var(--admin-accent-ink)" : "var(--admin-muted)",
-                border: "1px solid var(--admin-border)",
-                borderRadius: 20,
-                padding: "0.3rem 0.7rem",
-                fontSize: "0.75rem",
-              }}
               onClick={() => setStage(item[0])}
+              aria-pressed={stage === item[0]}
             >
               {item[1]}
             </button>
           ))}
         </div>
 
-        {/* Search + Create button */}
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center" }}>
+        <div className="admin-toolbar">
           <input
             placeholder="Buscar por nombre, correo o teléfono…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="admin-search-input"
-            style={{
-              flex: 1,
-              background: "var(--admin-bg)",
-              border: "1px solid var(--admin-border)",
-              borderRadius: 8,
-              padding: "0.55rem 0.75rem",
-              color: "var(--admin-text)",
-              font: "inherit",
-              fontSize: "0.85rem",
-              outline: "none",
-            }}
           />
           <button
             className={showCreate ? "admin-btn" : "admin-primary admin-small"}
@@ -168,12 +235,44 @@ export default function CrmManager({ data, refresh, notify }: Props) {
           </button>
         </div>
 
-        {/* Create form */}
+        <div className="admin-panel admin-crm-filter-panel">
+          <label>
+            Fuente
+            <select value={source} onChange={(e) => setSource(e.target.value)}>
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "todos" ? "Todas" : option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Experiencia
+            <select value={experience} onChange={(e) => setExperience(e.target.value)}>
+              <option value="todos">Todas</option>
+              {data.experiences.map((item) => (
+                <option key={text(item.id)} value={text(item.id)}>
+                  {text(item.title)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Pago
+            <select value={payment} onChange={(e) => setPayment(e.target.value)}>
+              <option value="todos">Todos</option>
+              <option value="unpaid">Pendiente</option>
+              <option value="paid">Pagado</option>
+              <option value="failed">Fallido</option>
+              <option value="refunded">Reembolsado</option>
+            </select>
+          </label>
+        </div>
+
         {showCreate && (
           <form
             className="admin-panel admin-inline-form"
             onSubmit={createCustomer}
-            style={{ marginBottom: "0.75rem", padding: "1rem" }}
           >
             <label>
               Nombre
@@ -199,31 +298,20 @@ export default function CrmManager({ data, refresh, notify }: Props) {
               type="submit"
               className="admin-primary admin-small"
               disabled={saving}
-              style={{ gridColumn: "1 / -1", justifySelf: "end" }}
             >
               {saving ? "Guardando…" : "Crear cliente"}
             </button>
           </form>
         )}
 
-        {/* Customer list */}
-        <div className="admin-panel" style={{ maxHeight: 480, overflowY: "auto", padding: "1rem" }}>
-          <p className="admin-muted" style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+        <div className="admin-panel admin-list-panel">
+          <p className="admin-muted admin-list-count">
             {filtered.length} contacto{filtered.length !== 1 ? "s" : ""}
           </p>
           {filtered.map((customer) => (
             <div
               key={text(customer.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.7rem",
-                padding: "0.5rem 0.4rem",
-                borderBottom: "1px solid var(--admin-border)",
-                cursor: "pointer",
-                background: text(selected?.id) === text(customer.id) ? "var(--admin-surface-2)" : "transparent",
-                borderRadius: 6,
-              }}
+              className={`admin-list-row clickable${text(selected?.id) === text(customer.id) ? " is-selected" : ""}`}
               onClick={() => setSelectedId(text(customer.id))}
             >
               <span
@@ -236,7 +324,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
               >
                 {text(customer.name).slice(0, 1).toUpperCase()}
               </span>
-              <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="admin-list-main">
                 <strong style={{ fontSize: "0.85rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {text(customer.name)}
                 </strong>
@@ -252,7 +340,6 @@ export default function CrmManager({ data, refresh, notify }: Props) {
         </div>
       </div>
 
-      {/* Right: Detail panel */}
       {selected && (
         <div>
           <div className="admin-panel">
@@ -287,23 +374,75 @@ export default function CrmManager({ data, refresh, notify }: Props) {
             )}
           </div>
 
-          {/* Reservations */}
+          <form className="admin-panel admin-inline-form" onSubmit={updateCustomer}>
+            <p className="admin-kicker admin-form-wide">Editar contacto</p>
+            <label>
+              Nombre
+              <input name="name" defaultValue={text(selected.name)} required />
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" defaultValue={text(selected.email)} required />
+            </label>
+            <label>
+              Teléfono
+              <input name="phone" defaultValue={text(selected.phone)} />
+            </label>
+            <label>
+              Fuente
+              <input name="source" defaultValue={text(selected.source) || "landing"} />
+            </label>
+            <label>
+              Etapa
+              <select name="stage" defaultValue={text(selected.stage) || "nuevo"}>
+                {stages.filter((s) => s[0] !== "todos").map((s) => (
+                  <option key={s[0]} value={s[0]}>{s[1]}</option>
+                ))}
+                <option value="requiere_revision">Requiere revisión</option>
+              </select>
+            </label>
+            <label className="admin-form-wide">
+              Notas internas
+              <textarea name="notes" rows={3} defaultValue={text(selected.notes)} />
+            </label>
+            <button type="submit" className="admin-primary admin-small">
+              Guardar contacto
+            </button>
+            <button type="button" className="admin-btn-danger" onClick={deleteCustomer}>
+              Eliminar contacto
+            </button>
+          </form>
+
           {customerReservations.length > 0 && (
             <div className="admin-panel">
               <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Reservas ({customerReservations.length})</p>
               {customerReservations.map((r) => (
-                <div key={text(r.id)} style={{ fontSize: "0.8rem", padding: "0.3rem 0", borderBottom: "1px solid var(--admin-border)", display: "flex", gap: "0.5rem" }}>
-                  <span style={{ flex: 1 }}>{text(r.title)}</span>
-                  <span>{Number(r.attendees_count)} pax</span>
-                  <span style={{ color: text(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
-                    {text(r.payment_status)}
-                  </span>
+                <div key={text(r.id)} className="admin-crm-reservation">
+                  <div className="admin-crm-reservation-line">
+                    <span>{text(r.title)}</span>
+                    <span>{Number(r.attendees_count)} pax</span>
+                    <span style={{ color: text(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
+                      {text(r.payment_status)}
+                    </span>
+                  </div>
+                  {(r.dietary_restrictions || r.accessibility_needs || r.interests || r.referral_source) && (
+                    <div className="admin-crm-intake">
+                      {r.dietary_restrictions && <p><strong>Alergias/restricciones:</strong> {text(r.dietary_restrictions)}</p>}
+                      {r.accessibility_needs && <p><strong>Movilidad/accesibilidad:</strong> {text(r.accessibility_needs)}</p>}
+                      {r.interests && <p><strong>Intereses/contexto:</strong> {text(r.interests)}</p>}
+                      {r.referral_source && <p><strong>Origen:</strong> {text(r.referral_source)}</p>}
+                    </div>
+                  )}
+                  {text(r.payment_status) !== "paid" && (
+                    <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
+                      Eliminar reserva y liberar cupos
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Events/Notes */}
           <div className="admin-panel">
             <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Notas y seguimiento</p>
             {customerEvents.length === 0 && (
@@ -318,20 +457,40 @@ export default function CrmManager({ data, refresh, notify }: Props) {
             ))}
           </div>
 
-          {/* Add note form */}
-          <form className="admin-panel admin-inline-form" onSubmit={addNote} style={{ padding: "1rem" }}>
-            <label style={{ gridColumn: "1 / -1" }}>
+          {customerSubmissions.length > 0 && (
+            <div className="admin-panel">
+              <p className="admin-kicker" style={{ marginBottom: "0.4rem" }}>Formularios ({customerSubmissions.length})</p>
+              {customerSubmissions.map((submission) => (
+                <details key={text(submission.id)} className="admin-crm-submission">
+                  <summary>
+                    <strong>{submissionTypeLabel(submission.type)}</strong>
+                    <span className="admin-muted">{text(submission.created_at).slice(0, 16)}</span>
+                  </summary>
+                  <div className="admin-crm-submission-grid">
+                    {payloadEntries(submission.payload_json).map(([key, value]) => (
+                      <p key={key}>
+                        <strong>{key}</strong>
+                        <span>{value}</span>
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+
+          <form className="admin-panel admin-inline-form" onSubmit={addNote}>
+            <label className="admin-form-wide">
               Título
               <input name="title" placeholder="Título de la nota *" required />
             </label>
-            <label style={{ gridColumn: "1 / -1" }}>
+            <label className="admin-form-wide">
               Detalle
               <textarea name="body" placeholder="Opcional" rows={2} style={{ resize: "vertical" }} />
             </label>
             <button
               type="submit"
               className="admin-primary admin-small"
-              style={{ justifySelf: "end", gridColumn: "1 / -1" }}
             >
               Agregar nota
             </button>
@@ -340,4 +499,24 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       )}
     </div>
   );
+}
+
+function payloadEntries(value: unknown): [string, string][] {
+  try {
+    const parsed = JSON.parse(text(value));
+    if (!parsed || typeof parsed !== "object") return [];
+    return Object.entries(parsed)
+      .filter(([, item]) => text(item).trim())
+      .map(([key, item]) => [key, text(item)]);
+  } catch {
+    return [];
+  }
+}
+
+function submissionTypeLabel(value: unknown) {
+  const type = text(value);
+  if (type === "exit_survey") return "Encuesta de salida";
+  if (type === "host_application") return "Propuesta de anfitrión";
+  if (type === "landing_lead") return "Solicitud desde landing";
+  return type || "Formulario";
 }
