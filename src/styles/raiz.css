@@ -1538,10 +1538,26 @@ footer a:focus-visible {
 }
 .faq-item-block:last-child { border-bottom: none; }
 .faq-item-q {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   align-items: baseline;
   gap: .6rem;
   margin-bottom: .35rem;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+.faq-item-q:hover .qtxt,
+.faq-item-q:focus-visible .qtxt {
+  color: var(--accent);
+}
+.faq-item-q:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
 }
 .faq-item-q .qn {
   font-family: var(--font-mono);
@@ -1556,6 +1572,14 @@ footer a:focus-visible {
   font-size: 0.92rem;
   font-weight: 600;
   line-height: 1.2;
+}
+.faq-toggle {
+  color: var(--accent);
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-left: auto;
 }
 .faq-item-a p {
   font-size: 0.84rem;
