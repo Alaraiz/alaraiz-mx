@@ -61,14 +61,36 @@ export async function PUT(request: NextRequest) {
       const type = String(item.type || "text");
       const rawValue = String(item.value ?? "");
       const value = type === "richtext" ? normalizeCmsHtml(rawValue) : rawValue;
+      const label = String(item.label || item.fieldKey || item.field_key || "Campo");
+      const sortOrder = Number(item.sortOrder ?? item.sort_order ?? 9999);
 
       if (!sectionKey || !fieldKey) continue;
 
       await db.execute({
-        sql: `UPDATE content_blocks
-              SET value = ?, updated_at = datetime('now')
-              WHERE page_key = ? AND section_key = ? AND field_key = ? AND locale = ?`,
-        args: [value, pageKey, sectionKey, fieldKey, locale],
+        sql: `INSERT INTO content_blocks (
+                page_key, section_key, field_key, locale, label, type, value,
+                default_value, is_rich_text, sort_order, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?, datetime('now'))
+              ON CONFLICT(page_key, section_key, field_key, locale)
+              DO UPDATE SET
+                label = excluded.label,
+                type = excluded.type,
+                value = excluded.value,
+                is_rich_text = excluded.is_rich_text,
+                sort_order = excluded.sort_order,
+                updated_at = datetime('now')`,
+        args: [
+          pageKey,
+          sectionKey,
+          fieldKey,
+          locale,
+          label,
+          type,
+          value,
+          type === "richtext" ? 1 : 0,
+          sortOrder,
+        ],
       });
     }
 

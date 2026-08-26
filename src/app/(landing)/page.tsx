@@ -782,6 +782,7 @@ function DiscoverPanel({ content }: { content: ContentMap }) {
     { id: "fundadores", n: "06", label: [copy("discover_nav", "fundadores_label", "es", "Quiénes fundaron Raíz"), copy("discover_nav", "fundadores_label", "en", "Who founded Raíz")], meta: [copy("discover_nav", "fundadores_meta", "es", "Fernanda Resendiz y Cesar Jeronimo Esquinca."), copy("discover_nav", "fundadores_meta", "en", "Fernanda Resendiz and Cesar Jeronimo Esquinca.")] },
     { id: "studio", n: "07", label: [copy("discover_nav", "studio_label", "es", "Raíz Studio · Asesoría"), copy("discover_nav", "studio_label", "en", "Raíz Studio · Advisory")], meta: [copy("discover_nav", "studio_meta", "es", "Formación y consultoría para operadores."), copy("discover_nav", "studio_meta", "en", "Training and consulting for operators.")] },
   ];
+  const faqItems = getFaqItems(content, copy);
 
   return (
     <div className="discover-grid">
@@ -814,14 +815,14 @@ function DiscoverPanel({ content }: { content: ContentMap }) {
       <div className="discover-panel">
         {active === "faq" && (
           <div className="discover-panel-inner">
-            {FAQ_DATA.map((item) => (
+            {faqItems.map((item) => (
               <div key={item.n} className="faq-item-block">
                 <div className="faq-item-q">
                   <span className="qn">{item.n}</span>
-                  <span className="qtxt"><span className="lng-es">{copy("faq", `q${item.n}`, "es", item.q[0])}</span><span className="lng-en">{copy("faq", `q${item.n}`, "en", item.q[1])}</span></span>
+                  <span className="qtxt"><span className="lng-es">{item.q[0]}</span><span className="lng-en">{item.q[1]}</span></span>
                 </div>
                 <div className="faq-item-a">
-                  <p><span className="lng-es">{copy("faq", `a${item.n}`, "es", item.a[0])}</span><span className="lng-en">{copy("faq", `a${item.n}`, "en", item.a[1])}</span></p>
+                  <p><span className="lng-es">{item.a[0]}</span><span className="lng-en">{item.a[1]}</span></p>
                 </div>
               </div>
             ))}
@@ -1017,6 +1018,40 @@ function DiscoverPanel({ content }: { content: ContentMap }) {
       </div>
     </div>
   );
+}
+
+function getFaqItems(
+  content: ContentMap,
+  copy: (
+    sectionKey: string,
+    fieldKey: string,
+    locale: "es" | "en",
+    fallback: string
+  ) => string
+) {
+  const numbers = new Set(FAQ_DATA.map((item) => item.n));
+  Object.keys(content).forEach((key) => {
+    const match = key.match(/^landing\.faq\.[qa](\d+)\.(es|en)$/);
+    if (match) numbers.add(match[1]);
+  });
+
+  return Array.from(numbers)
+    .sort((a, b) => Number(a) - Number(b))
+    .map((number) => {
+      const fallback = FAQ_DATA.find((item) => item.n === number);
+      return {
+        n: number,
+        q: [
+          copy("faq", `q${number}`, "es", fallback?.q[0] || ""),
+          copy("faq", `q${number}`, "en", fallback?.q[1] || ""),
+        ],
+        a: [
+          copy("faq", `a${number}`, "es", fallback?.a[0] || ""),
+          copy("faq", `a${number}`, "en", fallback?.a[1] || ""),
+        ],
+      };
+    })
+    .filter((item) => item.q[0] || item.q[1] || item.a[0] || item.a[1]);
 }
 
 const SECTION_IDS = ["top", "recreo", "especialistas", "rsvp", "descubre", "footer"];

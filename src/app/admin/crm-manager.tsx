@@ -343,26 +343,27 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       {selected && (
         <div>
           <div className="admin-panel">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div className="admin-crm-detail-head">
               <div>
                 <h3 style={{ margin: 0, fontSize: "1.1rem" }}>{text(selected.name)}</h3>
                 <p className="admin-muted" style={{ fontSize: "0.8rem", marginTop: "0.2rem" }}>
                   {text(selected.email)} · {text(selected.phone) || "Sin tel."}
                 </p>
               </div>
-              <span
-                style={{
-                  fontSize: "0.65rem",
-                  padding: "0.15rem 0.55rem",
-                  borderRadius: 12,
-                  background: "var(--admin-accent)",
-                  color: "var(--admin-accent-ink)",
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
-              >
-                {stageLabel(selected.stage)}
-              </span>
+              <div className="admin-crm-detail-actions">
+                <span className="admin-crm-stage-pill">
+                  {stageLabel(selected.stage)}
+                </span>
+                <button
+                  type="button"
+                  className="admin-icon-button"
+                  onClick={() => setSelectedId(null)}
+                  aria-label="Cerrar contacto"
+                  title="Cerrar contacto"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <p className="admin-muted" style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
               Fuente: {text(selected.source) || "landing"} · Creado: {text(selected.created_at).slice(0, 10)}
