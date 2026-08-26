@@ -839,13 +839,17 @@ h2 em { font-style: italic; color: var(--accent); }
 
 /* ─── Top nav container (hamburger + lang toggle) ─────────────────── */
 .top-nav {
-  position: absolute;
+  position: fixed;
   top: clamp(16px, 3vh, 28px);
   right: var(--gut);
-  z-index: 200;
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: .6rem;
+}
+
+.raiz-snap {
+  --text-scale: 1;
 }
 
 .font-scale-large {
@@ -856,21 +860,9 @@ h2 em { font-style: italic; color: var(--accent); }
   --text-scale: 1.16;
 }
 
-.font-scale-large p,
-.font-scale-large a,
-.font-scale-large button,
-.font-scale-large input,
-.font-scale-large textarea,
-.font-scale-large select,
-.font-scale-large label,
-.font-scale-xlarge p,
-.font-scale-xlarge a,
-.font-scale-xlarge button,
-.font-scale-xlarge input,
-.font-scale-xlarge textarea,
-.font-scale-xlarge select,
-.font-scale-xlarge label {
-  font-size: calc(1em * var(--text-scale, 1));
+.font-scale-large :is(h1, h2, h3, h4, p, a, button, input, textarea, select, label, li, small, dt, dd, .mono, .kicker, .folio, .tk, .tv, .rec-tags, .rec-name, .rec-product, .rec-meta, .rec-cta, .lc-collection, .lc-name, .lc-role, .lc-bio, .rk, .rv, .launch-row, .lk, .lv, .fsub, .chip, .disc-ix, .disc-tt, .disc-meta, .qtxt, .faq-item-a, .cn, .ck, .sc-title, .sc-desc, .colophon),
+.font-scale-xlarge :is(h1, h2, h3, h4, p, a, button, input, textarea, select, label, li, small, dt, dd, .mono, .kicker, .folio, .tk, .tv, .rec-tags, .rec-name, .rec-product, .rec-meta, .rec-cta, .lc-collection, .lc-name, .lc-role, .lc-bio, .rk, .rv, .launch-row, .lk, .lv, .fsub, .chip, .disc-ix, .disc-tt, .disc-meta, .qtxt, .faq-item-a, .cn, .ck, .sc-title, .sc-desc, .colophon) {
+  font-size: calc(1em * var(--text-scale, 1)) !important;
 }
 
 .lang-toggle {
@@ -1758,6 +1750,7 @@ footer {
   display: flex;
   align-items: center;
   gap: .5rem;
+  transform: translateY(-6px);
 }
 .brand .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .colophon {
