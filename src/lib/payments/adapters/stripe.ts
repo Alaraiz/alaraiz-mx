@@ -49,7 +49,7 @@ export class StripeGateway implements PaymentGateway {
         "line_items[0][price_data][unit_amount]": String(Math.round(input.amount * 100)),
         "line_items[0][price_data][product_data][name]": input.description,
         "line_items[0][quantity]": "1",
-        success_url: `${baseUrl}/reservar/confirmacion?ref={CHECKOUT_SESSION_ID}`,
+        success_url: `${baseUrl}/confirmacion?ref={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/reservar/cancelado`,
         customer_email: input.customerEmail,
         "metadata[reservationId]": input.reservationId,

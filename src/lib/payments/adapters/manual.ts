@@ -8,7 +8,7 @@ import type { PaymentGateway, CheckoutInput, CheckoutResult, WebhookResult } fro
 export class ManualGateway implements PaymentGateway {
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     const reference = `manual_${Date.now()}_${input.reservationId}`;
-    const url = `${input.baseUrl}/reservar/confirmacion?ref=${reference}`;
+    const url = `${input.baseUrl}/confirmacion?ref=${reference}`;
 
     return { url, reference };
   }

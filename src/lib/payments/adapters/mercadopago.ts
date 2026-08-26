@@ -53,9 +53,9 @@ export class MercadoPagoGateway implements PaymentGateway {
         ],
         payer: { email: input.customerEmail },
         back_urls: {
-          success: `${baseUrl}/reservar/confirmacion?ref=${input.reservationId}`,
+          success: `${baseUrl}/confirmacion?ref=${input.reservationId}`,
           failure: `${baseUrl}/reservar/cancelado`,
-          pending: `${baseUrl}/reservar/confirmacion?ref=${input.reservationId}&pending=1`,
+          pending: `${baseUrl}/confirmacion?ref=${input.reservationId}&pending=1`,
         },
         auto_return: "approved",
         external_reference: input.reservationId,

@@ -69,7 +69,7 @@ export class ClipGateway implements PaymentGateway {
     }
 
     return {
-      url: pendingActionUrl || `${input.baseUrl}/reservar/confirmacion?ref=${reference}`,
+      url: pendingActionUrl || `${input.baseUrl}/confirmacion?ref=${reference}`,
       reference,
       status,
       pendingActionUrl,
