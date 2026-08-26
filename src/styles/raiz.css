@@ -848,23 +848,6 @@ h2 em { font-style: italic; color: var(--accent); }
   gap: .6rem;
 }
 
-.raiz-snap {
-  --text-scale: 1;
-}
-
-.font-scale-large {
-  --text-scale: 1.08;
-}
-
-.font-scale-xlarge {
-  --text-scale: 1.16;
-}
-
-.font-scale-large :is(h1, h2, h3, h4, p, a, button, input, textarea, select, label, li, small, dt, dd, .mono, .kicker, .folio, .tk, .tv, .rec-tags, .rec-name, .rec-product, .rec-meta, .rec-cta, .lc-collection, .lc-name, .lc-role, .lc-bio, .rk, .rv, .launch-row, .lk, .lv, .fsub, .chip, .disc-ix, .disc-tt, .disc-meta, .qtxt, .faq-item-a, .cn, .ck, .sc-title, .sc-desc, .colophon),
-.font-scale-xlarge :is(h1, h2, h3, h4, p, a, button, input, textarea, select, label, li, small, dt, dd, .mono, .kicker, .folio, .tk, .tv, .rec-tags, .rec-name, .rec-product, .rec-meta, .rec-cta, .lc-collection, .lc-name, .lc-role, .lc-bio, .rk, .rv, .launch-row, .lk, .lv, .fsub, .chip, .disc-ix, .disc-tt, .disc-meta, .qtxt, .faq-item-a, .cn, .ck, .sc-title, .sc-desc, .colophon) {
-  font-size: calc(1em * var(--text-scale, 1)) !important;
-}
-
 .lang-toggle {
   position: relative;
   top: auto;
@@ -2220,4 +2203,37 @@ footer {
     font-size: 0.5rem;
     gap: .5rem;
   }
+}
+
+/* ===================== ACCESSIBLE FONT SCALE ===================== */
+.font-scale-large .section-screen,
+.font-scale-xlarge .section-screen {
+  height: 100dvh;
+  min-height: 100dvh;
+  justify-content: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.font-scale-large .section-screen > .wrap,
+.font-scale-xlarge .section-screen > .wrap {
+  margin-block: auto;
+}
+
+.font-scale-large .section-screen::-webkit-scrollbar,
+.font-scale-xlarge .section-screen::-webkit-scrollbar {
+  width: 4px;
+}
+
+.font-scale-large .section-screen::-webkit-scrollbar-track,
+.font-scale-xlarge .section-screen::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.font-scale-large .section-screen::-webkit-scrollbar-thumb,
+.font-scale-xlarge .section-screen::-webkit-scrollbar-thumb {
+  background: var(--rule);
+  border-radius: 999px;
 }

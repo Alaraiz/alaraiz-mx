@@ -236,6 +236,17 @@ export default function LandingClient({
   }, [fontScale]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const previousFontSize = root.style.fontSize;
+    root.style.fontSize =
+      fontScale === "xlarge" ? "19px" : fontScale === "large" ? "17.5px" : "";
+
+    return () => {
+      root.style.fontSize = previousFontSize;
+    };
+  }, [fontScale]);
+
+  useEffect(() => {
     if (!menuOpen) return;
 
     function onKeyDown(event: KeyboardEvent) {
