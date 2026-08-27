@@ -36,6 +36,14 @@ type ClipCard = {
   setAmount?: (amount: number) => void;
 };
 
+type PaymentResult = {
+  tone: "success" | "error" | "pending";
+  title: string;
+  message: string;
+  actionUrl?: string;
+  actionLabel?: string;
+};
+
 declare global {
   interface Window {
     ClipSDK?: new (apiKey: string) => {
@@ -93,6 +101,7 @@ export default function ReservarPage() {
   const [clipCard, setClipCard] = useState<ClipCard | null>(null);
   const [clipRequiresHttps, setClipRequiresHttps] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -210,6 +219,7 @@ export default function ReservarPage() {
 
     setSubmitting(true);
     setError("");
+    setPaymentResult(null);
 
     try {
       let cardToken = "";
@@ -245,16 +255,40 @@ export default function ReservarPage() {
           cardToken,
         }),
       });
-      const data = await readJson<{ error?: string; pendingActionUrl?: string; checkoutUrl?: string }>(
+      const data = await readJson<{
+        error?: string;
+        paymentStatus?: "paid" | "pending" | "failed";
+        pendingActionUrl?: string;
+        checkoutUrl?: string;
+        reference?: string;
+      }>(
         res,
         "No pudimos crear la reserva en este momento."
       );
-      if (!res.ok) throw new Error(data.error || "No pudimos crear la reserva.");
+      if (!res.ok || data.paymentStatus === "failed") {
+        setPaymentResult({
+          tone: "error",
+          title: "Pago no realizado",
+          message: data.error || "Clip rechazó la transacción. No se hizo el cobro.",
+        });
+        throw new Error(data.error || "No se hizo el cobro.");
+      }
 
       const redirectUrl = data.pendingActionUrl || data.checkoutUrl;
       if (!redirectUrl) throw new Error("La reserva se creó, pero no recibimos la liga de confirmación.");
 
-      window.location.href = redirectUrl;
+      const isPending = data.paymentStatus === "pending" || Boolean(data.pendingActionUrl);
+      setPaymentResult({
+        tone: isPending ? "pending" : "success",
+        title: isPending ? "Verificación pendiente" : "Pago exitoso",
+        message: isPending
+          ? "Clip necesita una verificación adicional para completar el pago."
+          : "El cargo fue aprobado y tu reserva quedó registrada.",
+        actionUrl: redirectUrl,
+        actionLabel: isPending ? "Continuar verificación" : "Ver confirmación",
+      });
+      setSubmitting(false);
+      setPaymentMessage("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pudimos crear la reserva.");
       setSubmitting(false);
@@ -546,7 +580,50 @@ export default function ReservarPage() {
           </form>
         )}
       </div>
+      {paymentResult && (
+        <PaymentResultModal
+          result={paymentResult}
+          onClose={() => setPaymentResult(null)}
+        />
+      )}
     </main>
+  );
+}
+
+function PaymentResultModal({
+  result,
+  onClose,
+}: {
+  result: PaymentResult;
+  onClose: () => void;
+}) {
+  return (
+    <div className="payment-modal-backdrop" role="presentation" onClick={onClose}>
+      <section className={`payment-modal payment-modal--${result.tone}`} role="dialog" aria-modal="true" aria-labelledby="payment-result-title" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="payment-modal__close" onClick={onClose} aria-label="Cerrar">
+          ×
+        </button>
+        <div className="payment-modal__mark">
+          {result.tone === "success" ? "✓" : result.tone === "pending" ? "..." : "!"}
+        </div>
+        <p className="kicker">
+          {result.tone === "success" ? "Transacción aprobada" : result.tone === "pending" ? "Acción requerida" : "Transacción fallida"}
+        </p>
+        <h2 id="payment-result-title">{result.title}</h2>
+        <p>{result.message}</p>
+        <div className="payment-modal__actions">
+          {result.actionUrl ? (
+            <a className="btn btn-solid" href={result.actionUrl}>
+              {result.actionLabel || "Continuar"}
+            </a>
+          ) : (
+            <button type="button" className="btn btn-solid" onClick={onClose}>
+              Intentar de nuevo
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 

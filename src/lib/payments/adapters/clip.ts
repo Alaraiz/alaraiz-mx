@@ -4,9 +4,24 @@ type ClipPaymentResponse = {
   id?: string;
   status?: string;
   status_detail?: { message?: string; code?: string };
+  message?: string;
+  error_code?: string;
+  detail?: string[];
   pending_action?: { type?: string; url?: string };
   external_reference?: string;
 };
+
+export class ClipPaymentError extends Error {
+  statusCode: number;
+  paymentStatus: "failed";
+
+  constructor(message: string, statusCode = 402) {
+    super(message);
+    this.name = "ClipPaymentError";
+    this.statusCode = statusCode;
+    this.paymentStatus = "failed";
+  }
+}
 
 export class ClipGateway implements PaymentGateway {
   private apiKey: string;
@@ -30,31 +45,44 @@ export class ClipGateway implements PaymentGateway {
       throw new Error("[ClipGateway] Clip requiere teléfono del cliente para procesar el pago.");
     }
 
-    const response = await fetch("https://api.payclip.com/payments", {
-      method: "POST",
-      headers: {
-        Authorization: `${this.authScheme} ${this.apiKey}`,
-        "Content-Type": "application/json",
+    const body = JSON.stringify({
+      amount: Number(input.amount.toFixed(2)),
+      currency: "MXN",
+      description: input.description.slice(0, 255),
+      external_reference: input.reservationId.slice(0, 36),
+      payment_method: {
+        token: input.cardToken,
       },
-      body: JSON.stringify({
-        amount: Number(input.amount.toFixed(2)),
-        currency: "MXN",
-        description: input.description.slice(0, 255),
-        external_reference: input.reservationId.slice(0, 36),
-        payment_method: {
-          token: input.cardToken,
-        },
-        customer: {
-          email: input.customerEmail,
-          phone: input.customerPhone,
-        },
-      }),
+      customer: {
+        email: input.customerEmail,
+        phone: input.customerPhone,
+      },
     });
 
-    const payment = (await response.json().catch(() => ({}))) as ClipPaymentResponse;
+    let response = await fetch("https://api.payclip.com/payments", {
+      method: "POST",
+      headers: {
+        Authorization: this.authorizationHeader(),
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+
+    let payment = (await response.json().catch(() => ({}))) as ClipPaymentResponse;
+    if (response.status === 401 && this.authScheme.toLowerCase() !== "basic") {
+      response = await fetch("https://api.payclip.com/payments", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body,
+      });
+      payment = (await response.json().catch(() => ({}))) as ClipPaymentResponse;
+    }
+
     if (!response.ok) {
-      const detail = payment.status_detail?.message || payment.status_detail?.code || response.statusText;
-      throw new Error(`[ClipGateway] No se pudo procesar el pago: ${detail}`);
+      throw new ClipPaymentError(readClipError(payment, response.statusText), response.status === 401 ? 401 : 402);
     }
 
     const reference = payment.id || input.reservationId;
@@ -62,7 +90,7 @@ export class ClipGateway implements PaymentGateway {
     const pendingActionUrl = payment.pending_action?.url;
 
     if (status === "failed") {
-      throw new Error(
+      throw new ClipPaymentError(
         payment.status_detail?.message ||
           "Clip rechazó el pago. Revisa los datos de la tarjeta o intenta con otra."
       );
@@ -74,6 +102,11 @@ export class ClipGateway implements PaymentGateway {
       status,
       pendingActionUrl,
     };
+  }
+
+  private authorizationHeader() {
+    if (/^(basic|bearer)\s+/i.test(this.apiKey)) return this.apiKey;
+    return `${this.authScheme} ${this.apiKey}`;
   }
 
   async verifyWebhook(payload: string, signature: string): Promise<WebhookResult> {
@@ -104,4 +137,17 @@ function normalizeClipStatus(status?: string): "paid" | "pending" | "failed" {
   if (normalized === "approved") return "paid";
   if (normalized === "pending" || normalized === "authorized") return "pending";
   return "failed";
+}
+
+function readClipError(payment: ClipPaymentResponse, fallback: string) {
+  const detail = Array.isArray(payment.detail) ? payment.detail.filter(Boolean).join(". ") : "";
+  return (
+    detail ||
+    payment.status_detail?.message ||
+    payment.status_detail?.code ||
+    payment.message ||
+    payment.error_code ||
+    fallback ||
+    "Clip no pudo procesar el pago."
+  );
 }

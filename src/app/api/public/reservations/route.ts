@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
 import { confirmPaidReservation, toPositiveInteger } from "@/lib/reservations";
+import { ClipPaymentError } from "@/lib/payments/adapters/clip";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export async function POST(request: NextRequest) {
 
   let heldAvailabilityId: string | null = null;
   let heldAttendeesCount = 0;
+  let reservationId: string | null = null;
+  let paymentProvider = (process.env.PAYMENT_PROVIDER || "manual").toLowerCase();
 
   try {
     const body = await request.json();
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
     const customerName = String(customer?.name || "").trim();
     const customerEmail = String(customer?.email || "").trim().toLowerCase();
     const customerPhone = String(customer?.phone || "").trim();
-    const provider = (process.env.PAYMENT_PROVIDER || "manual").toLowerCase();
+    const provider = paymentProvider;
 
     if (!experienceId || !availabilityId || !customerName || !isValidEmail(customerEmail)) {
       return NextResponse.json(
@@ -181,7 +184,7 @@ export async function POST(request: NextRequest) {
         buildReservationNote(intake),
       ],
     });
-    const reservationId = String(resResult.rows[0].id);
+    reservationId = String(resResult.rows[0].id);
 
     // Create checkout via payment gateway
     const gateway = getGateway();
@@ -229,7 +232,33 @@ export async function POST(request: NextRequest) {
         args: [heldAttendeesCount, heldAvailabilityId],
       }).catch(() => {});
     }
+
+    if (reservationId && paymentProvider === "clip") {
+      await db.execute({
+        sql: `UPDATE reservations
+              SET status = 'cancelled',
+                  payment_status = 'failed',
+                  payment_method = 'clip',
+                  capacity_held = 0,
+                  notes = trim(COALESCE(notes || char(10), '') || ?),
+                  updated_at = datetime('now')
+              WHERE id = ? AND payment_status != 'paid'`,
+        args: [`Pago rechazado/no cobrado: ${error instanceof Error ? error.message : "Clip no pudo procesar el pago."}`, reservationId],
+      }).catch(() => {});
+    }
+
     console.error("[POST /api/public/reservations]", error);
+    if (error instanceof ClipPaymentError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          paymentStatus: "failed",
+          reservationId,
+        },
+        { status: error.statusCode }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Error al crear la reserva." },
       { status: 500 }
