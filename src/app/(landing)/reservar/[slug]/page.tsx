@@ -14,9 +14,18 @@ type Slot = {
   remaining: number;
   title: string;
   slug: string;
+  tag: string | null;
+  description: string | null;
   price: number;
   duration: string;
   cover_image_url: string | null;
+  collection: string | null;
+  pace: string | null;
+  zone: string | null;
+  language: string | null;
+  includes: string | null;
+  facilitator_name: string | null;
+  facilitator_role: string | null;
 };
 
 type Customer = {
@@ -42,6 +51,15 @@ type PaymentResult = {
   message: string;
   actionUrl?: string;
   actionLabel?: string;
+};
+
+type AppliedDiscount = {
+  code: string;
+  label: string | null;
+  type: string;
+  value: number;
+  amount: number;
+  total: number;
 };
 
 declare global {
@@ -102,6 +120,10 @@ export default function ReservarPage() {
   const [clipRequiresHttps, setClipRequiresHttps] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+  const [discountMessage, setDiscountMessage] = useState("");
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -146,10 +168,12 @@ export default function ReservarPage() {
   }, [selectedSlot]);
 
   const experience = slots[0] ?? null;
-  const totalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
+  const subtotalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
+  const totalAmount = Math.max(0, subtotalAmount - (appliedDiscount?.amount || 0));
+  const needsCardPayment = clipCheckoutExpected && totalAmount > 0;
 
   useEffect(() => {
-    if (!clipCheckoutExpected) return;
+    if (!clipCheckoutExpected || !needsCardPayment) return;
     if (window.location.protocol !== "https:") {
       setClipRequiresHttps(true);
       setPaymentMessage("");
@@ -178,7 +202,7 @@ export default function ReservarPage() {
       console.error("[Clip SDK mount]", error);
       setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip. Revisa que la API Key de Clip esté activa y autorizada para Checkout Transparente.");
     }
-  }, [clipCard, clipLoaded, selectedSlot, totalAmount]);
+  }, [clipCard, clipLoaded, needsCardPayment, selectedSlot, totalAmount]);
 
   useEffect(() => {
     if (!clipCard || !totalAmount) return;
@@ -198,6 +222,55 @@ export default function ReservarPage() {
     [slots]
   );
   const maxAttendees = Math.max(1, selectedSlot?.remaining || 1);
+  const detailItems = [
+    ["Duración", experience?.duration],
+    ["Ritmo", experience?.pace],
+    ["Zona", experience?.zone],
+    ["Idioma", experience?.language],
+    ["Anfitrión", experience?.facilitator_name],
+    ["Colección", experience?.collection],
+  ].filter((item): item is [string, string] => Boolean(item[1]));
+
+  useEffect(() => {
+    setAppliedDiscount(null);
+    setDiscountMessage("");
+  }, [attendees, selectedSlot?.id]);
+
+  async function applyDiscount() {
+    const code = discountCode.trim();
+    if (!code) {
+      setAppliedDiscount(null);
+      setDiscountMessage("");
+      return;
+    }
+    if (subtotalAmount <= 0) {
+      setDiscountMessage("Selecciona una fecha y personas antes de aplicar descuento.");
+      return;
+    }
+
+    setValidatingDiscount(true);
+    setDiscountMessage("");
+    try {
+      const res = await fetch("/api/public/discounts/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: subtotalAmount }),
+      });
+      const data = await readJson<{ discount?: AppliedDiscount; error?: string }>(
+        res,
+        "No pudimos validar el descuento."
+      );
+      if (!res.ok || !data.discount) throw new Error(data.error || "Código inválido.");
+      setAppliedDiscount(data.discount);
+      setDiscountCode(data.discount.code);
+      setDiscountMessage("Descuento aplicado.");
+    } catch (error) {
+      setAppliedDiscount(null);
+      setDiscountMessage(error instanceof Error ? error.message : "Código inválido.");
+    } finally {
+      setValidatingDiscount(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -207,7 +280,7 @@ export default function ReservarPage() {
     const cleanEmail = customer.email.trim().toLowerCase();
     const cleanPhone = customer.phone.trim();
 
-    if (!cleanName || !cleanEmail || (clipCheckoutExpected && !cleanPhone)) {
+    if (!cleanName || !cleanEmail || (needsCardPayment && !cleanPhone)) {
       setError(clipCheckoutExpected ? "Nombre, correo y teléfono son obligatorios para pagar con Clip." : "Nombre y correo son obligatorios.");
       return;
     }
@@ -223,7 +296,7 @@ export default function ReservarPage() {
 
     try {
       let cardToken = "";
-      if (clipCheckoutExpected) {
+      if (needsCardPayment) {
         if (!clipCheckoutEnabled) {
           throw new Error("Falta configurar una API Key real de Clip para mostrar el formulario de pago.");
         }
@@ -252,6 +325,7 @@ export default function ReservarPage() {
           interests: customer.interests.trim(),
           referralSource: customer.referralSource.trim(),
           company: customer.company.trim(),
+          discountCode: appliedDiscount?.code || discountCode.trim(),
           cardToken,
         }),
       });
@@ -342,17 +416,20 @@ export default function ReservarPage() {
 
               <p className="kicker">Reservar lugar</p>
               <h1 id="booking-title">{experience.title}</h1>
-              <p className="lede">
-                Elige una fecha, comparte tus datos y confirma tu lugar. Revisamos cada reserva con cuidado para mantener grupos pequeños.
-              </p>
+              <p className="lede">{experience.description || "Elige una fecha, comparte tus datos y confirma tu lugar. Revisamos cada reserva con cuidado para mantener grupos pequeños."}</p>
+
+              <div className="booking-detail-tags">
+                {experience.tag && <span>{experience.tag}</span>}
+                {experience.facilitator_role && <span>{experience.facilitator_role}</span>}
+              </div>
 
               <dl className="booking-facts" aria-label="Detalles de la experiencia">
-                {experience.duration && (
-                  <div>
-                    <dt>Duración</dt>
-                    <dd>{experience.duration}</dd>
+                {detailItems.slice(0, 6).map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
                   </div>
-                )}
+                ))}
                 <div>
                   <dt>Precio</dt>
                   <dd>{priceLabel}</dd>
@@ -362,6 +439,12 @@ export default function ReservarPage() {
                   <dd>{selectedSlot ? `${selectedSlot.remaining} lugares disponibles` : "Cupo limitado"}</dd>
                 </div>
               </dl>
+              {experience.includes && (
+                <div className="booking-includes">
+                  <span>Incluye</span>
+                  <p>{experience.includes}</p>
+                </div>
+              )}
             </section>
 
             <section className="booking-card" aria-label="Formulario de reserva">
@@ -534,11 +617,37 @@ export default function ReservarPage() {
               <div className="form-section">
                 <div className="form-section__head">
                   <span>04</span>
+                  <h2>Descuento</h2>
+                </div>
+
+                <div className="discount-row">
+                  <input
+                    className="public-input"
+                    value={discountCode}
+                    onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+                    placeholder="Código"
+                  />
+                  <button type="button" className="btn btn-ghost" onClick={applyDiscount} disabled={validatingDiscount}>
+                    {validatingDiscount ? "Validando..." : "Aplicar"}
+                  </button>
+                </div>
+                {discountMessage && (
+                  <p className={`payment-note${appliedDiscount ? " payment-note--success" : ""}`}>
+                    {discountMessage}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-section">
+                <div className="form-section__head">
+                  <span>05</span>
                   <h2>Pago seguro</h2>
                 </div>
 
                 <div className="clip-payment-box">
-                  {clipCheckoutEnabled ? (
+                  {totalAmount <= 0 ? (
+                    <p className="payment-note payment-note--success">Tu descuento cubre el total. No se solicitará tarjeta.</p>
+                  ) : clipCheckoutEnabled ? (
                     <div className="clip-payment-card">
                       <div className="clip-payment-card__head">
                         <span>Clip Checkout</span>
@@ -570,7 +679,12 @@ export default function ReservarPage() {
               <div className="booking-summary">
                 <div>
                   <span>Total</span>
-                  <strong>{totalAmount > 0 ? `$${totalAmount.toLocaleString("es-MX")} MXN` : "Por confirmar"}</strong>
+                  {appliedDiscount && (
+                    <small className="booking-summary-discount">
+                      Subtotal ${subtotalAmount.toLocaleString("es-MX")} · -${appliedDiscount.amount.toLocaleString("es-MX")}
+                    </small>
+                  )}
+                  <strong>{totalAmount > 0 ? `$${totalAmount.toLocaleString("es-MX")} MXN` : "$0 MXN"}</strong>
                 </div>
                 <button type="submit" className="btn btn-solid public-submit" disabled={submitting || !selectedSlot}>
                   {submitting ? "Procesando..." : clipCheckoutExpected ? "Pagar y reservar" : "Reservar y continuar"}

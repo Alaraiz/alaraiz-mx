@@ -9,6 +9,9 @@ type Reservation = {
   customerEmail: string;
   experienceTitle: string;
   attendeesCount: number;
+  subtotalAmount?: number;
+  discountCode?: string;
+  discountAmount?: number;
   amount: number;
   status: string;
   paymentStatus: string;
@@ -99,6 +102,12 @@ function ConfirmacionContent() {
             <dt>Total</dt>
             <dd>${Number(reservation.amount).toLocaleString("es-MX")} MXN</dd>
           </div>
+          {Number(reservation.discountAmount || 0) > 0 && (
+            <div>
+              <dt>Descuento</dt>
+              <dd>{reservation.discountCode} · -${Number(reservation.discountAmount).toLocaleString("es-MX")} MXN</dd>
+            </div>
+          )}
           <div>
             <dt>Nombre</dt>
             <dd>{reservation.customerName}</dd>

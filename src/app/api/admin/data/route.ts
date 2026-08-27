@@ -47,9 +47,10 @@ export async function GET() {
     let events = { rows: [] as unknown[] };
     let folders = { rows: [] as unknown[] };
     let submissions = { rows: [] as unknown[] };
+    let discounts = { rows: [] as unknown[] };
 
     if (isAdmin) {
-      [customers, reservations, events, folders, submissions] = await Promise.all([
+      [customers, reservations, events, folders, submissions, discounts] = await Promise.all([
         db.execute("SELECT * FROM customers ORDER BY updated_at DESC"),
         db.execute(
           `SELECT r.*, c.name, c.email, c.phone, e.title, a.date, a.time
@@ -66,6 +67,11 @@ export async function GET() {
            FROM form_submissions fs
            LEFT JOIN customers c ON c.id = fs.customer_id
            ORDER BY fs.created_at DESC`
+        ),
+        db.execute(
+          `SELECT id, code, label, discount_type, value, is_active, max_uses, used_count, starts_at, expires_at, created_at, updated_at
+           FROM discount_codes
+           ORDER BY created_at DESC`
         ),
       ]);
     } else if (facilitatorId) {
@@ -102,6 +108,7 @@ export async function GET() {
       submissions: submissions.rows,
       facilitators: facilitators.rows,
       collections: collections.rows,
+      discounts: discounts.rows,
       currentRole: user.role,
       currentFacilitatorId: facilitatorId || null,
     });

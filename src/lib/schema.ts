@@ -102,6 +102,9 @@ export async function migrate() {
       experience_id TEXT NOT NULL REFERENCES experiences(id),
       availability_id TEXT REFERENCES availability(id),
       attendees_count INTEGER NOT NULL DEFAULT 1,
+      subtotal_amount REAL,
+      discount_code TEXT,
+      discount_amount REAL NOT NULL DEFAULT 0,
       amount REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'pending',
       payment_status TEXT NOT NULL DEFAULT 'unpaid',
@@ -159,6 +162,22 @@ export async function migrate() {
       payload_json TEXT NOT NULL DEFAULT '{}',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
+
+    // Discount codes for public checkout
+    `CREATE TABLE IF NOT EXISTS discount_codes (
+      id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+      code TEXT NOT NULL UNIQUE,
+      label TEXT,
+      discount_type TEXT NOT NULL DEFAULT 'percent',
+      value REAL NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      max_uses INTEGER,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      starts_at TEXT,
+      expires_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
   ]);
 
   // Add _en columns to existing experiences tables (safe to run repeatedly)
@@ -184,6 +203,9 @@ export async function migrate() {
   }
 
   const reservationColumns = [
+    ["subtotal_amount", "REAL"],
+    ["discount_code", "TEXT"],
+    ["discount_amount", "REAL NOT NULL DEFAULT 0"],
     ["dietary_restrictions", "TEXT"],
     ["accessibility_needs", "TEXT"],
     ["interests", "TEXT"],
@@ -203,5 +225,6 @@ export async function migrate() {
     "CREATE INDEX IF NOT EXISTS idx_reservations_availability ON reservations(availability_id)",
     "CREATE INDEX IF NOT EXISTS idx_form_submissions_customer ON form_submissions(customer_id)",
     "CREATE INDEX IF NOT EXISTS idx_content_blocks_page ON content_blocks(page_key)",
+    "CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON discount_codes(code)",
   ]);
 }

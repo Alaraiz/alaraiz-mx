@@ -21,9 +21,12 @@ export async function GET(request: NextRequest) {
     if (experienceId) {
       result = await db.execute({
         sql: `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status,
-                     e.title, e.slug, e.price, e.duration, e.cover_image_url
+                     e.title, e.slug, e.tag, e.description, e.price, e.duration, e.cover_image_url,
+                     e.collection, e.pace, e.zone, e.language, e.includes,
+                     f.name AS facilitator_name, f.role AS facilitator_role
               FROM availability a
               JOIN experiences e ON e.id = a.experience_id
+              LEFT JOIN facilitators f ON f.id = e.facilitator_id
               WHERE a.experience_id = ? AND a.status = 'open' AND e.is_published = 1
                 AND a.date >= ?
                 AND (a.capacity - a.booked) > 0
@@ -33,9 +36,12 @@ export async function GET(request: NextRequest) {
     } else {
       result = await db.execute({
         sql: `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status,
-                     e.title, e.slug, e.price, e.duration, e.cover_image_url
+                     e.title, e.slug, e.tag, e.description, e.price, e.duration, e.cover_image_url,
+                     e.collection, e.pace, e.zone, e.language, e.includes,
+                     f.name AS facilitator_name, f.role AS facilitator_role
               FROM availability a
               JOIN experiences e ON e.id = a.experience_id
+              LEFT JOIN facilitators f ON f.id = e.facilitator_id
               WHERE a.status = 'open' AND e.is_published = 1
                 AND a.date >= ?
                 AND (a.capacity - a.booked) > 0

@@ -128,7 +128,7 @@
 
 .booking-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   margin-top: clamp(22px, 4vw, 36px);
   border: 1px solid var(--rule);
@@ -140,7 +140,9 @@
   border-right: 1px solid var(--rule-soft);
   background: rgba(27, 23, 17, .72);
 }
+.booking-facts div:nth-child(2n),
 .booking-facts div:last-child { border-right: none; }
+.booking-facts div:nth-child(n+3) { border-top: 1px solid var(--rule-soft); }
 .booking-facts dt,
 .confirmation-details dt {
   font-family: var(--font-mono);
@@ -155,6 +157,50 @@
   font-family: var(--font-display);
   line-height: 1.16;
   color: var(--ink);
+}
+
+.booking-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: 1rem;
+}
+
+.booking-detail-tags span {
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  padding: .32rem .55rem;
+  text-transform: uppercase;
+}
+
+.booking-includes {
+  margin-top: 1rem;
+  border: 1px solid var(--rule-soft);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  background: rgba(27, 23, 17, .56);
+}
+
+.booking-includes span {
+  color: var(--ink-faint);
+  display: block;
+  font-family: var(--font-mono);
+  font-size: .58rem;
+  letter-spacing: .14em;
+  margin-bottom: .35rem;
+  text-transform: uppercase;
+}
+
+.booking-includes p {
+  color: var(--ink-dim);
+  font-size: .86rem;
+  line-height: 1.45;
+  margin: 0;
 }
 
 .booking-card,
@@ -444,6 +490,9 @@ textarea.public-input {
   background: rgba(255, 196, 87, .08);
   color: #ffd27a;
 }
+.payment-note--success {
+  color: var(--moss);
+}
 .payment-note code {
   color: var(--ink);
   font-family: var(--font-mono);
@@ -457,9 +506,22 @@ textarea.public-input {
   text-transform: uppercase;
   color: var(--ink-faint);
 }
+.booking-summary-discount {
+  color: var(--moss);
+  display: block;
+  font-size: .68rem;
+  margin-top: .18rem;
+}
 .booking-summary strong {
   font-family: var(--font-display);
   font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+}
+
+.discount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .6rem;
+  align-items: center;
 }
 .public-submit:disabled {
   cursor: wait;

@@ -3,6 +3,7 @@ import { db, ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
 import { confirmPaidReservation, toPositiveInteger } from "@/lib/reservations";
 import { ClipPaymentError } from "@/lib/payments/adapters/clip";
+import { calculateDiscount, registerDiscountUse } from "@/lib/discounts";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,6 @@ export const dynamic = "force-dynamic";
  * Returns: { checkoutUrl, reference }
  */
 export async function POST(request: NextRequest) {
-  await ensureMigrated();
-
   const limited = rateLimit(`reservation:${clientIp(request)}`, {
     limit: 10,
     windowMs: 60 * 60 * 1000,
@@ -34,6 +33,8 @@ export async function POST(request: NextRequest) {
   let paymentProvider = (process.env.PAYMENT_PROVIDER || "manual").toLowerCase();
 
   try {
+    await ensureMigrated();
+
     const body = await request.json();
     if (hasSpamTrap(body)) return NextResponse.json({ ok: true });
 
@@ -59,9 +60,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (provider === "clip" && (!customerPhone || !cardToken)) {
+    if (provider === "clip" && !customerPhone) {
       return NextResponse.json(
-        { error: "Para pagar con Clip necesitamos teléfono y datos de tarjeta válidos." },
+        { error: "Para pagar con Clip necesitamos teléfono." },
         { status: 400 }
       );
     }
@@ -81,6 +82,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Experiencia no encontrada." }, { status: 404 });
     }
     const experience = expResult.rows[0];
+
+    const pricePerPerson = Number(experience.price) || 0;
+    const subtotalAmount = pricePerPerson * attendeesCount;
+    const discount = await calculateDiscount(body.discountCode, subtotalAmount);
+    if (!discount.ok) {
+      return NextResponse.json({ error: discount.error }, { status: discount.status });
+    }
+    const totalAmount = discount.total;
+
+    if (provider === "clip" && totalAmount > 0 && !cardToken) {
+      return NextResponse.json(
+        { error: "Para pagar con Clip necesitamos datos de tarjeta válidos." },
+        { status: 400 }
+      );
+    }
 
     const capacityHold = await db.execute({
       sql: `UPDATE availability
@@ -159,23 +175,23 @@ export async function POST(request: NextRequest) {
       customerId = String(insertResult.rows[0].id);
     }
 
-    // Calculate amount
-    const pricePerPerson = Number(experience.price) || 0;
-    const totalAmount = pricePerPerson * attendeesCount;
-
     // Create reservation
     const resResult = await db.execute({
       sql: `INSERT INTO reservations (
-              customer_id, experience_id, availability_id, attendees_count, amount,
+              customer_id, experience_id, availability_id, attendees_count, subtotal_amount,
+              discount_code, discount_amount, amount,
               status, payment_status, payment_method, capacity_held,
               dietary_restrictions, accessibility_needs, interests, referral_source, notes
             )
-            VALUES (?, ?, ?, ?, ?, 'pending', 'unpaid', 'pending', 1, ?, ?, ?, ?, ?) RETURNING id`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'unpaid', 'pending', 1, ?, ?, ?, ?, ?) RETURNING id`,
       args: [
         customerId,
         experienceId,
         availabilityId,
         attendeesCount,
+        subtotalAmount,
+        discount.code || null,
+        discount.amount,
         totalAmount,
         intake.dietaryRestrictions || null,
         intake.accessibilityNeeds || null,
@@ -185,6 +201,31 @@ export async function POST(request: NextRequest) {
       ],
     });
     reservationId = String(resResult.rows[0].id);
+
+    if (totalAmount <= 0) {
+      await db.execute({
+        sql: `UPDATE reservations
+              SET status = 'confirmed',
+                  payment_status = 'paid',
+                  payment_method = 'discount',
+                  updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [reservationId],
+      });
+      await db.execute({
+        sql: "UPDATE customers SET stage = 'confirmado', updated_at = datetime('now') WHERE id = ?",
+        args: [customerId],
+      });
+      await registerDiscountUse(discount.code);
+      heldAvailabilityId = null;
+      return NextResponse.json({
+        checkoutUrl: `${baseUrlFromRequest(request)}/confirmacion?ref=${reservationId}`,
+        reference: reservationId,
+        reservationId,
+        paymentStatus: "paid",
+        discount,
+      });
+    }
 
     // Create checkout via payment gateway
     const gateway = getGateway();
@@ -217,6 +258,9 @@ export async function POST(request: NextRequest) {
     if (provider === "clip" && checkout.status === "paid") {
       await confirmPaidReservation(checkout.reference, "online");
     }
+    if (checkout.status === "paid" || checkout.status === "pending") {
+      await registerDiscountUse(discount.code);
+    }
 
     return NextResponse.json({
       checkoutUrl: checkout.url,
@@ -224,6 +268,7 @@ export async function POST(request: NextRequest) {
       reservationId,
       paymentStatus: checkout.status || "pending",
       pendingActionUrl: checkout.pendingActionUrl,
+      discount,
     });
   } catch (error) {
     if (heldAvailabilityId && heldAttendeesCount > 0) {
@@ -264,6 +309,14 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function baseUrlFromRequest(request: NextRequest) {
+  const host = request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+  const requestBaseUrl = host ? `${proto}://${host}` : "http://localhost:3000";
+  const isLocalRequest = host?.includes("localhost") || host?.includes("127.0.0.1");
+  return isLocalRequest ? requestBaseUrl : process.env.NEXT_PUBLIC_SITE_URL || requestBaseUrl;
 }
 
 function buildReservationNote(intake: {

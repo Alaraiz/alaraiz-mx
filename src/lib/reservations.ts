@@ -25,7 +25,7 @@ export async function getReservationByPaymentReference(reference: string) {
   const result = await db.execute({
     sql: `SELECT r.id, r.status, r.payment_status, r.payment_method, r.customer_id,
                  r.experience_id, r.availability_id, r.attendees_count, r.amount,
-                 r.capacity_held,
+                 r.subtotal_amount, r.discount_code, r.discount_amount, r.capacity_held,
                  c.name, c.email, e.title
           FROM reservations r
           LEFT JOIN customers c ON c.id = r.customer_id
@@ -45,6 +45,9 @@ export function serializeReservation(row: Record<string, unknown>) {
     customerEmail: row.email,
     experienceTitle: row.title,
     attendeesCount: row.attendees_count,
+    subtotalAmount: row.subtotal_amount,
+    discountCode: row.discount_code,
+    discountAmount: row.discount_amount,
     amount: row.amount,
     status: row.status,
     paymentStatus: row.payment_status,

@@ -19,6 +19,7 @@ type Data = {
   submissions: Row[];
   facilitators: Row[];
   collections: Row[];
+  discounts: Row[];
   currentRole?: string;
   currentFacilitatorId?: string | null;
 };
@@ -72,6 +73,7 @@ export default function AdminDashboard() {
     submissions: [],
     facilitators: [],
     collections: [],
+    discounts: [],
     currentRole: "editor",
     currentFacilitatorId: null,
   });
@@ -990,6 +992,7 @@ function Payments({ data }: { data: Data }) {
   const paid = data.reservations.filter((r) => r.payment_status === "paid");
   const pending = data.reservations.filter((r) => r.payment_status === "unpaid" || r.payment_status === "pending");
   const totalRevenue = paid.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const totalDiscounts = data.reservations.reduce((sum, r) => sum + (Number(r.discount_amount) || 0), 0);
 
   return (
     <>
@@ -1013,8 +1016,14 @@ function Payments({ data }: { data: Data }) {
             <span className="admin-muted" style={{ fontSize: "0.72rem" }}>Ingresos</span>
             <strong style={{ display: "block", fontSize: "1.3rem" }}>${totalRevenue.toLocaleString("es-MX")}</strong>
           </div>
+          <div>
+            <span className="admin-muted" style={{ fontSize: "0.72rem" }}>Descuentos</span>
+            <strong style={{ display: "block", fontSize: "1.3rem", color: "var(--admin-accent)" }}>${totalDiscounts.toLocaleString("es-MX")}</strong>
+          </div>
         </div>
       </div>
+
+      <DiscountManager initialDiscounts={data.discounts} />
 
       {data.reservations.length === 0 ? (
         <div className="admin-panel">
@@ -1030,6 +1039,11 @@ function Payments({ data }: { data: Data }) {
               </div>
               <span style={{ fontSize: "0.8rem" }}>{Number(r.attendees_count)} pax</span>
               <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>${Number(r.amount).toLocaleString("es-MX")}</span>
+              {Number(r.discount_amount || 0) > 0 && (
+                <span className="admin-badge">
+                  {String(r.discount_code)} -${Number(r.discount_amount).toLocaleString("es-MX")}
+                </span>
+              )}
               <span className={`admin-badge ${r.payment_status === "paid" ? "success" : "warning"}`}>
                 {String(r.payment_status)}
               </span>
@@ -1038,6 +1052,176 @@ function Payments({ data }: { data: Data }) {
         </div>
       )}
     </>
+  );
+}
+
+function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
+  const [discounts, setDiscounts] = useState<Row[]>(initialDiscounts);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [form, setForm] = useState({
+    code: "",
+    label: "",
+    discountType: "percent",
+    value: "",
+    maxUses: "",
+    startsAt: "",
+    expiresAt: "",
+    isActive: true,
+  });
+
+  useEffect(() => {
+    setDiscounts(initialDiscounts);
+  }, [initialDiscounts]);
+
+  async function loadDiscounts() {
+    const response = await fetchWithTimeout("/api/admin/discounts");
+    const data = await readJson<{ discounts?: Row[]; error?: string }>(response, "No pudimos cargar descuentos.");
+    if (!response.ok) throw new Error(data.error || "No pudimos cargar descuentos.");
+    setDiscounts(data.discounts || []);
+  }
+
+  function reset() {
+    setEditing(null);
+    setShowForm(false);
+    setMessage("");
+    setForm({ code: "", label: "", discountType: "percent", value: "", maxUses: "", startsAt: "", expiresAt: "", isActive: true });
+  }
+
+  function startEdit(discount: Row) {
+    setEditing(discount);
+    setShowForm(true);
+    setForm({
+      code: String(discount.code || ""),
+      label: String(discount.label || ""),
+      discountType: String(discount.discount_type || "percent"),
+      value: String(discount.value || ""),
+      maxUses: discount.max_uses == null ? "" : String(discount.max_uses),
+      startsAt: String(discount.starts_at || ""),
+      expiresAt: String(discount.expires_at || ""),
+      isActive: Number(discount.is_active) === 1,
+    });
+  }
+
+  async function saveDiscount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(editing ? `/api/admin/discounts/${String(editing.id)}` : "/api/admin/discounts", {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await readJson<{ error?: string }>(response, "No pudimos guardar el descuento.");
+      if (!response.ok) throw new Error(data.error || "No pudimos guardar el descuento.");
+      reset();
+      await loadDiscounts();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No pudimos guardar el descuento.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeDiscount(discount: Row) {
+    if (!window.confirm(`¿Eliminar el código ${String(discount.code)}?`)) return;
+    try {
+      const response = await fetch(`/api/admin/discounts/${String(discount.id)}`, { method: "DELETE" });
+      const data = await readJson<{ error?: string }>(response, "No pudimos eliminar el descuento.");
+      if (!response.ok) throw new Error(data.error || "No pudimos eliminar el descuento.");
+      await loadDiscounts();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No pudimos eliminar el descuento.");
+    }
+  }
+
+  return (
+    <div className="admin-panel admin-discounts-panel">
+      <div className="admin-panel-head">
+        <div>
+          <p className="admin-kicker">Códigos de descuento</p>
+          <h3>Promos para checkout</h3>
+        </div>
+        <button type="button" className={showForm ? "admin-btn admin-small" : "admin-primary admin-small"} onClick={() => showForm ? reset() : setShowForm(true)}>
+          {showForm ? "Cancelar" : "＋ Nuevo código"}
+        </button>
+      </div>
+
+      {showForm && (
+        <form className="admin-discount-form" onSubmit={saveDiscount}>
+          <label>
+            Código
+            <input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase().replace(/\s+/g, "") })} placeholder="RAIZ10" required />
+          </label>
+          <label>
+            Nombre interno
+            <input value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="Promo lanzamiento" />
+          </label>
+          <label>
+            Tipo
+            <select value={form.discountType} onChange={(event) => setForm({ ...form, discountType: event.target.value })}>
+              <option value="percent">Porcentaje</option>
+              <option value="fixed">Monto fijo</option>
+            </select>
+          </label>
+          <label>
+            Valor
+            <input type="number" min="0" step="0.01" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} placeholder={form.discountType === "percent" ? "10" : "250"} required />
+          </label>
+          <label>
+            Límite de usos
+            <input type="number" min="1" value={form.maxUses} onChange={(event) => setForm({ ...form, maxUses: event.target.value })} placeholder="Ilimitado" />
+          </label>
+          <label>
+            Desde
+            <input type="date" value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} />
+          </label>
+          <label>
+            Expira
+            <input type="date" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
+          </label>
+          <label className="admin-toggle-row">
+            <input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} />
+            Activo
+          </label>
+          <button type="submit" className="admin-primary admin-small" disabled={saving}>
+            {saving ? "Guardando..." : editing ? "Guardar código" : "Crear código"}
+          </button>
+        </form>
+      )}
+
+      {message && <p className="admin-error-text">{message}</p>}
+
+      <div className="admin-discount-list">
+        {discounts.length === 0 ? (
+          <p className="admin-empty">No hay códigos creados.</p>
+        ) : (
+          discounts.map((discount) => {
+            const active = Number(discount.is_active) === 1;
+            const maxUses = discount.max_uses == null ? "Ilimitado" : String(discount.max_uses);
+            return (
+              <div key={String(discount.id)} className="admin-discount-row">
+                <div>
+                  <strong>{String(discount.code)}</strong>
+                  <span className="admin-muted">
+                    {discount.label ? `${String(discount.label)} · ` : ""}
+                    {String(discount.discount_type) === "fixed" ? `$${Number(discount.value).toLocaleString("es-MX")} MXN` : `${Number(discount.value)}%`} · {String(discount.used_count || 0)}/{maxUses}
+                  </span>
+                </div>
+                <span className={`admin-badge ${active ? "success" : "warning"}`}>{active ? "Activo" : "Inactivo"}</span>
+                <div className="admin-row-actions">
+                  <button type="button" className="admin-btn admin-small" onClick={() => startEdit(discount)}>Editar</button>
+                  <button type="button" className="admin-btn-danger" onClick={() => removeDiscount(discount)}>Eliminar</button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }
 
