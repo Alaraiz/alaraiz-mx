@@ -361,18 +361,80 @@ textarea.public-input {
   display: grid;
   gap: .7rem;
 }
-.clip-card-frame {
-  min-height: 168px;
+.clip-payment-card {
   overflow: hidden;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: rgba(20, 17, 13, .56);
+  border: 1px solid color-mix(in oklab, var(--accent), var(--rule) 64%);
+  border-radius: 14px;
+  background: rgba(20, 17, 13, .72);
+  box-shadow: 0 22px 48px -34px rgba(0, 0, 0, .78);
+}
+.clip-payment-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .62rem .85rem;
+  border-bottom: 1px solid rgba(20, 17, 13, .12);
+  background: rgba(20, 17, 13, .92);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.clip-payment-card__head strong {
+  color: var(--accent);
+  font-size: .5rem;
+}
+.clip-card-frame {
+  min-height: 276px;
+  overflow: hidden;
+  padding: .55rem .65rem .2rem;
+  background: var(--paper);
+}
+.clip-card-frame iframe {
+  display: block;
+  width: 100%;
+  min-height: 258px;
+}
+.clip-https-notice {
+  display: grid;
+  gap: .35rem;
+  min-height: 176px;
+  align-content: center;
+  padding: 1.15rem;
+  background:
+    linear-gradient(135deg, rgba(232, 184, 106, .12), transparent 58%),
+    rgba(20, 17, 13, .58);
+  color: var(--ink);
+}
+.clip-https-notice strong {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 500;
+}
+.clip-https-notice span {
+  max-width: 42ch;
+  color: var(--ink-dim);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.clip-https-notice code {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: .72rem;
 }
 .payment-note {
   margin: 0;
   color: var(--ink-dim);
   font-size: .76rem;
   line-height: 1.45;
+}
+.clip-payment-card .payment-note {
+  padding: 0 .85rem .85rem;
+  color: var(--ink-dim);
 }
 .payment-note--warning {
   border: 1px solid rgba(255, 196, 87, .28);

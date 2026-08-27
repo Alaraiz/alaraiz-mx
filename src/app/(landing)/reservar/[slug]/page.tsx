@@ -82,6 +82,7 @@ export default function ReservarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [clipLoaded, setClipLoaded] = useState(false);
   const [clipCard, setClipCard] = useState<ClipCard | null>(null);
+  const [clipRequiresHttps, setClipRequiresHttps] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
 
   useEffect(() => {
@@ -128,6 +129,12 @@ export default function ReservarPage() {
 
   useEffect(() => {
     if (!clipCheckoutExpected) return;
+    if (window.location.protocol !== "https:") {
+      setClipRequiresHttps(true);
+      setPaymentMessage("");
+      return;
+    }
+    setClipRequiresHttps(false);
     if (!clipCheckoutEnabled) {
       setPaymentMessage("Falta configurar una API Key real de Clip para activar el formulario de tarjeta.");
       return;
@@ -480,10 +487,21 @@ export default function ReservarPage() {
 
                 <div className="clip-payment-box">
                   {clipCheckoutEnabled ? (
-                    <>
-                      <div id={CLIP_CARD_CONTAINER_ID} className="clip-card-frame" />
+                    <div className="clip-payment-card">
+                      <div className="clip-payment-card__head">
+                        <span>Clip Checkout</span>
+                        <strong>Seguro</strong>
+                      </div>
+                      {clipRequiresHttps ? (
+                        <div className="clip-https-notice">
+                          <strong>Clip requiere HTTPS</strong>
+                          <span>Para probar el formulario de tarjeta en local, abre esta página con <code>npm run dev:https</code>.</span>
+                        </div>
+                      ) : (
+                        <div id={CLIP_CARD_CONTAINER_ID} className="clip-card-frame" />
+                      )}
                       <p className="payment-note">Tus datos de tarjeta se capturan en el iframe seguro de Clip; Raíz no los recibe ni los guarda.</p>
-                    </>
+                    </div>
                   ) : clipCheckoutExpected ? (
                     <p className="payment-note payment-note--warning">
                       Clip queda listo al configurar <code>NEXT_PUBLIC_CLIP_API_KEY</code>, <code>CLIP_API_KEY</code>, <code>NEXT_PUBLIC_PAYMENT_PROVIDER=clip</code> y <code>PAYMENT_PROVIDER=clip</code>.
