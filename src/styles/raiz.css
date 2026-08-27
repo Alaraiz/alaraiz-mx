@@ -228,6 +228,7 @@
 .slot-option strong,
 .slot-option small {
   display: block;
+  min-width: 0;
 }
 .slot-option strong {
   font-family: var(--font-display);
@@ -727,6 +728,13 @@ textarea.public-input {
     grid-template-columns: 1fr;
   }
   .booking-intro {
+    position: static;
+  }
+  .booking-card {
+    max-height: none;
+    overflow: visible;
+  }
+  .booking-summary {
     position: static;
   }
 }
@@ -2092,6 +2100,18 @@ footer {
 @media(min-width:521px) and (max-width:860px) {
   .section-screen { padding: clamp(18px, 3vh, 36px) 0; }
   .lead-card .portrait { max-height: 22vh; }
+}
+
+@media(min-width:769px) and (max-width:1024px) {
+  .section-screen {
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .section-screen > .wrap {
+    margin-block: auto;
+  }
 }
 
 /* Prevent text overflow everywhere */

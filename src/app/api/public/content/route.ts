@@ -14,11 +14,11 @@ type ContentSqlRow = {
 };
 
 export async function GET(request: NextRequest) {
-  await ensureMigrated();
-
   const pageKey = request.nextUrl.searchParams.get("pageKey") || "landing";
 
   try {
+    await ensureMigrated();
+
     const result = await db.execute({
       sql: `SELECT page_key, section_key, field_key, locale,
                    COALESCE(value, default_value, '') AS value,

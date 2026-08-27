@@ -60,6 +60,15 @@ function isConfiguredClipKey(value: string) {
   return Boolean(normalized) && !normalized.includes("reemplazar") && !normalized.includes("replace");
 }
 
+async function readJson<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json() as Promise<T>;
+  }
+
+  throw new Error(fallbackMessage);
+}
+
 export default function ReservarPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -94,10 +103,13 @@ export default function ReservarPage() {
         const res = await fetch("/api/public/availability", {
           cache: "no-store",
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        const data = await readJson<{ slots?: Slot[]; error?: string }>(
+          res,
+          "No pudimos cargar la disponibilidad en este momento."
+        );
+        if (!res.ok) throw new Error(data.error || "No pudimos cargar la disponibilidad.");
 
-        const filtered = (data.slots as Slot[]).filter(
+        const filtered = (data.slots || []).filter(
           (slot) => slot.slug === slug && slot.remaining > 0
         );
 
@@ -233,10 +245,16 @@ export default function ReservarPage() {
           cardToken,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await readJson<{ error?: string; pendingActionUrl?: string; checkoutUrl?: string }>(
+        res,
+        "No pudimos crear la reserva en este momento."
+      );
+      if (!res.ok) throw new Error(data.error || "No pudimos crear la reserva.");
 
-      window.location.href = data.pendingActionUrl || data.checkoutUrl;
+      const redirectUrl = data.pendingActionUrl || data.checkoutUrl;
+      if (!redirectUrl) throw new Error("La reserva se creó, pero no recibimos la liga de confirmación.");
+
+      window.location.href = redirectUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pudimos crear la reserva.");
       setSubmitting(false);

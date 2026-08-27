@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
  * No auth required — public endpoint.
  */
 export async function GET() {
-  await ensureMigrated();
-
   try {
+    await ensureMigrated();
+
     const result = await db.execute(
       `SELECT e.id, e.slug, e.title, e.tag, e.description, e.duration, e.price,
               e.capacity, e.cover_image_url, e.gallery_images_json, e.collection, e.pace, e.zone,

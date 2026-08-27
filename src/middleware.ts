@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getAuthSecret } from "@/lib/auth-secret";
 
-const SECRET = getAuthSecret();
 const COOKIE_NAME = "raiz_session";
 
 /** Routes restricted to admin role only (editors get 403) */
@@ -13,7 +12,7 @@ async function getRoleFromCookie(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getAuthSecret());
     return (payload as { role?: string }).role || "admin";
   } catch {
     return null;
@@ -62,5 +61,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/public/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };

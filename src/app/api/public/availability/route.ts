@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
  * Only returns future dates with status='open' and remaining capacity.
  */
 export async function GET(request: NextRequest) {
-  await ensureMigrated();
-
   const experienceId = request.nextUrl.searchParams.get("experienceId");
   const today = getMexicoDateKey();
 
   try {
+    await ensureMigrated();
+
     let result;
 
     if (experienceId) {
