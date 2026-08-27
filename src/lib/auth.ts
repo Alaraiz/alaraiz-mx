@@ -4,7 +4,6 @@ import { db } from "./db";
 import bcrypt from "bcryptjs";
 import { getAuthSecret } from "./auth-secret";
 
-const SECRET = getAuthSecret();
 const COOKIE_NAME = "raiz_session";
 const EXPIRY = "7d";
 
@@ -18,7 +17,7 @@ export async function createToken(userId: string, email: string, role: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(EXPIRY)
     .setIssuedAt()
-    .sign(SECRET);
+    .sign(getAuthSecret());
 }
 
 /**
@@ -26,7 +25,7 @@ export async function createToken(userId: string, email: string, role: string) {
  */
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getAuthSecret());
     return payload as unknown as TokenPayload;
   } catch {
     return null;

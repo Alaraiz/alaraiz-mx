@@ -37,6 +37,25 @@ const allTabs = [
 
 const adminOnlyTabs = new Set(["collections", "crm", "payments"]);
 
+async function readJson<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json() as Promise<T>;
+  }
+
+  throw new Error(fallbackMessage);
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
   const [role, setRole] = useState<string>("admin");
@@ -61,8 +80,8 @@ export default function AdminDashboard() {
   );
 
   useEffect(() => {
-    fetch("/api/admin/me")
-      .then((r) => r.json())
+    fetchWithTimeout("/api/admin/me", {}, 8000)
+      .then((r) => readJson<{ role?: string; name?: string }>(r, "No pudimos validar la sesión."))
       .then((d) => {
         if (d.role) setRole(d.role);
         if (d.name) setUserName(d.name);
@@ -73,8 +92,11 @@ export default function AdminDashboard() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/data");
-      const value = await response.json();
+      const response = await fetchWithTimeout("/api/admin/data");
+      const value = await readJson<Data & { error?: string }>(
+        response,
+        "El servidor respondió con un error inesperado al cargar el admin."
+      );
       if (!response.ok)
         throw new Error(value.error || "No se pudieron cargar los datos.");
       setData(value);

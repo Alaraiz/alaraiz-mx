@@ -5,14 +5,14 @@ import { db, ensureMigrated } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  await ensureMigrated();
-
-  const user = await getUserFromToken();
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
   try {
+    await ensureMigrated();
+
+    const user = await getUserFromToken();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
+
     const isAdmin = user.role === "admin";
 
     // Base queries available to all roles
@@ -68,6 +68,7 @@ export async function GET() {
       collections: collections.rows,
     });
   } catch (error) {
+    console.error("[GET /api/admin/data]", error);
     return NextResponse.json(
       { error: "Error al cargar los datos." },
       { status: 500 }

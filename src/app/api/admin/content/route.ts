@@ -16,39 +16,47 @@ type ContentSqlRow = {
 };
 
 export async function GET(request: NextRequest) {
-  const user = await requireRole(["admin", "editor"]);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  try {
+    const user = await requireRole(["admin", "editor"]);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
+
+    await ensureMigrated();
+    const pageKey = request.nextUrl.searchParams.get("pageKey") || "landing";
+    await seedPageBlocks(pageKey);
+
+    const result = await db.execute({
+      sql: `SELECT id, page_key, section_key, field_key, locale, label, type,
+                   value, default_value, is_rich_text, sort_order, updated_at
+            FROM content_blocks
+            WHERE page_key = ?
+            ORDER BY sort_order ASC, section_key ASC, field_key ASC, locale ASC`,
+      args: [pageKey],
+    });
+
+    return NextResponse.json({
+      blocks: result.rows,
+      content: contentRowsToMap(result.rows as ContentSqlRow[]),
+    });
+  } catch (error) {
+    console.error("[GET /api/admin/content]", error);
+    return NextResponse.json(
+      { error: "Error al cargar el contenido." },
+      { status: 500 }
+    );
   }
-
-  await ensureMigrated();
-  const pageKey = request.nextUrl.searchParams.get("pageKey") || "landing";
-  await seedPageBlocks(pageKey);
-
-  const result = await db.execute({
-    sql: `SELECT id, page_key, section_key, field_key, locale, label, type,
-                 value, default_value, is_rich_text, sort_order, updated_at
-          FROM content_blocks
-          WHERE page_key = ?
-          ORDER BY sort_order ASC, section_key ASC, field_key ASC, locale ASC`,
-    args: [pageKey],
-  });
-
-  return NextResponse.json({
-    blocks: result.rows,
-    content: contentRowsToMap(result.rows as ContentSqlRow[]),
-  });
 }
 
 export async function PUT(request: NextRequest) {
-  const user = await requireRole(["admin", "editor"]);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
-  }
-
-  await ensureMigrated();
-
   try {
+    const user = await requireRole(["admin", "editor"]);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+    }
+
+    await ensureMigrated();
+
     const body = await request.json();
     const pageKey = String(body.pageKey || "landing");
     const updates = Array.isArray(body.blocks) ? body.blocks : [];

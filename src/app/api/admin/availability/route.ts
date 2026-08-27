@@ -5,14 +5,14 @@ import { db, ensureMigrated } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const user = await requireRole(["admin", "editor"]);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
-  await ensureMigrated();
-
   try {
+    const user = await requireRole(["admin", "editor"]);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
+
+    await ensureMigrated();
+
     const body = await request.json();
     const { experienceId, date, time, capacity } = body;
 

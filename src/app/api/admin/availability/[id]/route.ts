@@ -9,14 +9,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const user = await requireRole(["admin", "editor"]);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
-  await ensureMigrated();
-
   try {
+    const user = await requireRole(["admin", "editor"]);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
+
+    await ensureMigrated();
+
     const body = await request.json();
     const currentResult = await db.execute({
       sql: "SELECT booked, capacity FROM availability WHERE id = ?",
