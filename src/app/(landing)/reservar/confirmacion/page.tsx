@@ -108,7 +108,7 @@ function ConfirmacionContent() {
             <dd>{reservation.customerEmail}</dd>
           </div>
           <div className="confirmation-details__full confirmation-ref">
-            <dt>Referencia</dt>
+            <dt>Referencia de pago con tarjeta</dt>
             <dd>{ref}</dd>
           </div>
         </dl>
