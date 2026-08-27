@@ -33,13 +33,17 @@ type Customer = {
 type ClipCard = {
   mount: (id: string) => void;
   cardToken: () => Promise<{ id: string }>;
+  setAmount?: (amount: number) => void;
 };
 
 declare global {
   interface Window {
     ClipSDK?: new (apiKey: string) => {
       element: {
-        create: (type: "Card", options: { theme: "light" | "dark"; locale: "es" | "en" }) => ClipCard;
+        create: (
+          type: "Card",
+          options: { theme: "light" | "dark"; locale: "es" | "en"; paymentAmount?: number }
+        ) => ClipCard;
       };
     };
   }
@@ -119,6 +123,9 @@ export default function ReservarPage() {
     );
   }, [selectedSlot]);
 
+  const experience = slots[0] ?? null;
+  const totalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
+
   useEffect(() => {
     if (!clipCheckoutExpected) return;
     if (!clipCheckoutEnabled) {
@@ -126,12 +133,15 @@ export default function ReservarPage() {
       return;
     }
     if (!clipLoaded || clipCard || !window.ClipSDK) return;
+    const mountTarget = document.getElementById(CLIP_CARD_CONTAINER_ID);
+    if (!mountTarget) return;
 
     try {
       const clip = new window.ClipSDK(clipPublicKey);
       const card = clip.element.create("Card", {
         theme: "dark",
         locale: "es",
+        paymentAmount: totalAmount,
       });
       card.mount(CLIP_CARD_CONTAINER_ID);
       setClipCard(card);
@@ -140,10 +150,13 @@ export default function ReservarPage() {
       console.error("[Clip SDK mount]", error);
       setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip. Revisa que la API Key de Clip esté activa y autorizada para Checkout Transparente.");
     }
-  }, [clipCard, clipLoaded]);
+  }, [clipCard, clipLoaded, selectedSlot, totalAmount]);
 
-  const experience = slots[0] ?? null;
-  const totalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
+  useEffect(() => {
+    if (!clipCard || !totalAmount) return;
+    clipCard.setAmount?.(totalAmount);
+  }, [clipCard, totalAmount]);
+
   const priceLabel = useMemo(() => {
     if (!selectedSlot?.price) return "Solicitud sin cobro inmediato";
     return `$${selectedSlot.price.toLocaleString("es-MX")} MXN / persona`;
