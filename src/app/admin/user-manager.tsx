@@ -6,21 +6,26 @@ type User = {
   email: string;
   name: string | null;
   role: string;
+  facilitator_id?: string | null;
+  facilitator_name?: string | null;
   created_at: string;
 };
 
 type Props = {
   notify: (message: string) => void;
+  facilitators: Row[];
 };
 
-export default function UserManager({ notify }: Props) {
+type Row = Record<string, string | number | null>;
+
+export default function UserManager({ notify, facilitators }: Props) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({ email: "", name: "", role: "editor", password: "" });
+  const [form, setForm] = useState({ email: "", name: "", role: "editor", password: "", facilitatorId: "" });
 
   async function fetchUsers() {
     setLoading(true);
@@ -42,14 +47,20 @@ export default function UserManager({ notify }: Props) {
   }, []);
 
   function resetForm() {
-    setForm({ email: "", name: "", role: "editor", password: "" });
+    setForm({ email: "", name: "", role: "editor", password: "", facilitatorId: "" });
     setEditingUser(null);
     setShowForm(false);
   }
 
   function startEdit(user: User) {
     setEditingUser(user);
-    setForm({ email: user.email, name: user.name || "", role: user.role, password: "" });
+    setForm({
+      email: user.email,
+      name: user.name || "",
+      role: user.role,
+      password: "",
+      facilitatorId: user.facilitator_id || "",
+    });
     setShowForm(true);
   }
 
@@ -59,7 +70,7 @@ export default function UserManager({ notify }: Props) {
 
     try {
       if (editingUser) {
-        const body: Record<string, string> = { name: form.name, role: form.role };
+        const body: Record<string, string> = { name: form.name, role: form.role, facilitatorId: form.facilitatorId };
         if (form.password) body.password = form.password;
 
         const res = await fetch(`/api/admin/users/${editingUser.id}`, {
@@ -166,6 +177,21 @@ export default function UserManager({ notify }: Props) {
             </select>
           </label>
           <label>
+            Facilitador asignado
+            <select
+              value={form.facilitatorId}
+              onChange={(e) => setForm({ ...form, facilitatorId: e.target.value })}
+              disabled={form.role === "admin"}
+            >
+              <option value="">Sin asignar</option>
+              {facilitators.map((facilitator) => (
+                <option key={String(facilitator.id)} value={String(facilitator.id)}>
+                  {String(facilitator.name)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             {editingUser ? "Nueva contraseña (opcional)" : "Contraseña"}
             <input
               type="password"
@@ -199,7 +225,7 @@ export default function UserManager({ notify }: Props) {
           <div>
             <span style={{ fontWeight: 600, fontSize: "0.8rem" }}>Editor</span>
             <p className="admin-muted" style={{ margin: "0.1rem 0 0", fontSize: "0.72rem" }}>
-              Acceso limitado: crear experiencias y gestionar facilitadores.
+              Acceso limitado: crear experiencias, gestionar facilitadores y ver calendario de sus salidas como anfitrión. No puede editar CMS.
             </p>
           </div>
         </div>
@@ -250,6 +276,7 @@ export default function UserManager({ notify }: Props) {
                 </div>
                 <span className="admin-muted" style={{ fontSize: "0.72rem" }}>
                   {user.email}
+                  {user.facilitator_name && ` · Anfitrión: ${user.facilitator_name}`}
                   {user.created_at && ` · ${new Date(user.created_at).toLocaleDateString("es-MX")}`}
                 </span>
               </div>

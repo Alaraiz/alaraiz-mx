@@ -177,6 +177,12 @@ export async function migrate() {
     // Column already exists — ignore
   }
 
+  try {
+    await db.execute("ALTER TABLE users ADD COLUMN facilitator_id TEXT REFERENCES facilitators(id)");
+  } catch {
+    // Column already exists — ignore
+  }
+
   const reservationColumns = [
     ["dietary_restrictions", "TEXT"],
     ["accessibility_needs", "TEXT"],

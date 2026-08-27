@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole, hashPassword } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, ensureMigrated } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await requireRole(["admin"]);
@@ -9,8 +11,14 @@ export async function GET() {
   }
 
   try {
+    await ensureMigrated();
+
     const result = await db.execute(
-      "SELECT id, email, name, role, created_at FROM users ORDER BY created_at DESC"
+      `SELECT u.id, u.email, u.name, u.role, u.facilitator_id, u.created_at,
+              f.name AS facilitator_name
+       FROM users u
+       LEFT JOIN facilitators f ON f.id = u.facilitator_id
+       ORDER BY u.created_at DESC`
     );
     return NextResponse.json({ users: result.rows });
   } catch (error) {
@@ -26,8 +34,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await ensureMigrated();
+
     const body = await request.json();
-    const { email, password, name, role } = body;
+    const { email, password, name, role, facilitatorId } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email y contraseña son obligatorios." }, { status: 400 });
@@ -35,11 +45,12 @@ export async function POST(request: NextRequest) {
 
     const validRoles = ["admin", "editor"];
     const userRole = validRoles.includes(role) ? role : "editor";
+    const assignedFacilitatorId = userRole === "editor" && facilitatorId ? String(facilitatorId) : null;
 
     const hash = await hashPassword(password);
     const result = await db.execute({
-      sql: "INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?) RETURNING id",
-      args: [email, hash, name || null, userRole],
+      sql: "INSERT INTO users (email, password_hash, name, role, facilitator_id) VALUES (?, ?, ?, ?, ?) RETURNING id",
+      args: [email, hash, name || null, userRole, assignedFacilitatorId],
     });
 
     return NextResponse.json({ ok: true, id: result.rows[0].id });

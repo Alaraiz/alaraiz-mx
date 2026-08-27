@@ -19,6 +19,8 @@ type Data = {
   submissions: Row[];
   facilitators: Row[];
   collections: Row[];
+  currentRole?: string;
+  currentFacilitatorId?: string | null;
 };
 type Notice = { message: string; tone: "success" | "error" };
 type Notify = (message: string, tone?: Notice["tone"]) => void;
@@ -35,7 +37,7 @@ const allTabs = [
   ["settings", "Configuración"],
 ];
 
-const adminOnlyTabs = new Set(["collections", "crm", "payments"]);
+const adminOnlyTabs = new Set(["collections", "content", "crm", "payments"]);
 
 async function readJson<T>(response: Response, fallbackMessage: string): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
@@ -58,7 +60,7 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
-  const [role, setRole] = useState<string>("admin");
+  const [role, setRole] = useState<string>("editor");
   const [userName, setUserName] = useState<string>("");
   const [data, setData] = useState<Data>({
     experiences: [],
@@ -70,6 +72,8 @@ export default function AdminDashboard() {
     submissions: [],
     facilitators: [],
     collections: [],
+    currentRole: "editor",
+    currentFacilitatorId: null,
   });
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,6 +104,7 @@ export default function AdminDashboard() {
       if (!response.ok)
         throw new Error(value.error || "No se pudieron cargar los datos.");
       setData(value);
+      if (value.currentRole) setRole(value.currentRole);
     } catch (error) {
       setNotice({
         message:
@@ -193,14 +198,14 @@ export default function AdminDashboard() {
               <ExperienceManager data={data} refresh={refresh} notify={notify} />
             )}
             {tab === "facilitators" && <FacilitatorManager data={data} refresh={refresh} notify={notify} />}
-            {tab === "calendar" && <Calendar data={data} refresh={refresh} notify={notify} />}
+            {tab === "calendar" && <Calendar data={data} role={role} refresh={refresh} notify={notify} />}
             {tab === "collections" && <CollectionManager notify={notify} />}
             {tab === "content" && <ContentManager notify={notify} />}
             {tab === "crm" && (
               <CrmManager data={data} refresh={refresh} notify={notify} />
             )}
             {tab === "payments" && <Payments data={data} />}
-            {tab === "settings" && <Settings notify={notify} role={role} />}
+            {tab === "settings" && <Settings notify={notify} role={role} data={data} />}
           </>
         )}
       </section>
@@ -411,12 +416,14 @@ function Overview({
   );
 }
 
-function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; notify: (s: string) => void }) {
+function Calendar({ data, role, refresh, notify }: { data: Data; role: string; refresh: () => void; notify: (s: string) => void }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ experienceId: "", date: "", time: "10:00", capacity: "12" });
   const [saving, setSaving] = useState(false);
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [moveTargetId, setMoveTargetId] = useState("");
+  const [movingReservations, setMovingReservations] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -464,6 +471,21 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
   const selectedFacilitator = selectedExperience?.facilitator_id
     ? data.facilitators.find((facilitator) => String(facilitator.id) === String(selectedExperience.facilitator_id))
     : null;
+  const assignableExperiences = role === "admin"
+    ? data.experiences
+    : data.experiences.filter((experience) => Number(experience.is_hosted_by_current_user) === 1);
+  const moveTargets = selectedSlot
+    ? sortedDates.filter(
+        (slot) =>
+          String(slot.id) !== String(selectedSlot.id) &&
+          String(slot.experience_id) === String(selectedSlot.experience_id) &&
+          String(slot.status || "open") === "open"
+      )
+    : [];
+
+  useEffect(() => {
+    setMoveTargetId("");
+  }, [selectedSlotId]);
 
   function prevMonth() {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
@@ -553,6 +575,39 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
     }
   }
 
+  async function moveAllReservations() {
+    if (!selectedSlot || !moveTargetId) return;
+    const target = moveTargets.find((slot) => String(slot.id) === moveTargetId);
+    if (!target) {
+      notify("Elige una fecha destino válida.");
+      return;
+    }
+    if (!window.confirm(`¿Mover todas las reservas de ${formatCalDate(String(selectedSlot.date))} a ${formatCalDate(String(target.date))}?`)) return;
+
+    setMovingReservations(true);
+    try {
+      const res = await fetch(`/api/admin/availability/${String(selectedSlot.id)}/move-reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetAvailabilityId: moveTargetId }),
+      });
+      const result = await readJson<{ error?: string; moved?: number }>(
+        res,
+        "El servidor respondió con un error inesperado al mover reservas."
+      );
+      if (!res.ok) throw new Error(result.error || "No se pudieron mover las reservas.");
+
+      notify(`Reservas movidas: ${result.moved || 0}.`);
+      setSelectedSlotId(moveTargetId);
+      setMoveTargetId("");
+      refresh();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "No se pudieron mover las reservas.");
+    } finally {
+      setMovingReservations(false);
+    }
+  }
+
   return (
     <>
       <div className="admin-page-head">
@@ -600,7 +655,7 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
               required
             >
               <option value="">Seleccionar...</option>
-              {data.experiences.map((exp) => (
+              {assignableExperiences.map((exp) => (
                 <option key={String(exp.id)} value={String(exp.id)}>
                   {String(exp.title)}
                 </option>
@@ -683,12 +738,13 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
                     const booked = Number(slot.booked) || 0;
                     const cap = Number(slot.capacity) || 12;
                     const full = booked >= cap;
+                    const hosted = Number(slot.is_hosted_by_current_user) === 1;
                     return (
                       <button
                         type="button"
                         key={String(slot.id)}
-                        title={`${String(slot.title)} · ${String(slot.time)} · ${booked}/${cap}`}
-                        className={`admin-calendar-slot${full ? " is-full" : ""}`}
+                        title={`${String(slot.title)} · ${String(slot.time)} · ${booked}/${cap}${hosted ? " · Tu salida" : ""}`}
+                        className={`admin-calendar-slot${full ? " is-full" : ""}${hosted ? " is-hosted" : ""}`}
                         onClick={() => setSelectedSlotId(String(slot.id))}
                       >
                         {String(slot.time).slice(0, 5)} · {String(slot.title).slice(0, 10)}
@@ -715,8 +771,9 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
                 const capacity = Number(slot.capacity) || 12;
                 const pct = Math.min((booked / capacity) * 100, 100);
                 const avReservations = reservationsByAvailability[String(slot.id)] || [];
+                const hosted = Number(slot.is_hosted_by_current_user) === 1;
                 return (
-                  <div key={String(slot.id)} className="admin-panel admin-slot-row">
+                  <div key={String(slot.id)} className={`admin-panel admin-slot-row${hosted ? " is-hosted" : ""}`}>
                     <div className="admin-slot-content">
                       <div style={{ minWidth: 80 }}>
                         <strong style={{ fontSize: "0.9rem" }}>{formatCalDate(String(slot.date))}</strong>
@@ -724,6 +781,12 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
                       </div>
                       <div style={{ flex: 1, minWidth: 120 }}>
                         <span style={{ fontSize: "0.85rem" }}>{String(slot.title)}</span>
+                        {hosted && <span className="admin-host-badge">Tu salida</span>}
+                        {slot.facilitator_name && !hosted && (
+                          <span className="admin-muted" style={{ display: "block", fontSize: "0.72rem" }}>
+                            Anfitrión: {String(slot.facilitator_name)}
+                          </span>
+                        )}
                       </div>
                       <div className="admin-capacity">
                         <span style={{ fontSize: "0.8rem" }}>
@@ -847,6 +910,33 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
                 {String(selectedSlot.status) === "open" ? "Cerrar fecha" : "Abrir fecha"}
               </button>
             </div>
+            <div className="admin-reschedule-box">
+              <div>
+                <p className="admin-kicker">Reagendar grupo</p>
+                <p className="admin-muted">Mueve todas las reservas de esta salida a otra fecha de la misma experiencia.</p>
+              </div>
+              <div className="admin-reschedule-actions">
+                <select value={moveTargetId} onChange={(event) => setMoveTargetId(event.target.value)}>
+                  <option value="">Nueva fecha...</option>
+                  {moveTargets.map((slot) => (
+                    <option key={String(slot.id)} value={String(slot.id)}>
+                      {formatCalDate(String(slot.date))} · {String(slot.time)} · {Number(slot.capacity) - Number(slot.booked)} cupos libres
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="admin-primary admin-small"
+                  onClick={moveAllReservations}
+                  disabled={!moveTargetId || movingReservations || selectedReservations.length === 0}
+                >
+                  {movingReservations ? "Moviendo..." : "Mover todas"}
+                </button>
+              </div>
+              {moveTargets.length === 0 && (
+                <p className="admin-muted">Primero crea otra fecha para esta experiencia.</p>
+              )}
+            </div>
             <div className="admin-log-section">
               <p className="admin-kicker">Personas reservadas ({selectedReservations.length})</p>
               {selectedReservations.length === 0 ? (
@@ -951,7 +1041,7 @@ function Payments({ data }: { data: Data }) {
   );
 }
 
-function Settings({ notify, role }: { notify: (s: string) => void; role: string }) {
+function Settings({ notify, role, data }: { notify: (s: string) => void; role: string; data: Data }) {
   const [subTab, setSubTab] = useState<"security" | "users">("security");
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -1003,7 +1093,7 @@ function Settings({ notify, role }: { notify: (s: string) => void; role: string 
         </form>
       )}
 
-      {subTab === "users" && role === "admin" && <UserManager notify={notify} />}
+      {subTab === "users" && role === "admin" && <UserManager notify={notify} facilitators={data.facilitators} />}
     </div>
   );
 }

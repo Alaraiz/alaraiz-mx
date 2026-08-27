@@ -1107,6 +1107,12 @@
   color: #ef6a63;
 }
 
+.admin-calendar-slot.is-hosted {
+  background: color-mix(in srgb, var(--admin-accent) 24%, transparent);
+  box-shadow: inset 3px 0 0 var(--admin-accent);
+  color: var(--admin-text);
+}
+
 .admin-list-stack {
   display: flex;
   flex-direction: column;
@@ -1116,6 +1122,11 @@
 .admin-slot-row,
 .admin-payment-row {
   padding: 0.8rem 1rem;
+}
+
+.admin-slot-row.is-hosted {
+  border-color: color-mix(in srgb, var(--admin-accent) 42%, var(--admin-border));
+  box-shadow: inset 4px 0 0 var(--admin-accent);
 }
 
 .admin-slot-content,
@@ -1207,6 +1218,20 @@
   font-weight: 600;
 }
 
+.admin-host-badge {
+  background: var(--admin-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--admin-accent) 40%, transparent);
+  border-radius: 999px;
+  color: var(--admin-accent);
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 0.25rem;
+  padding: 0.12rem 0.48rem;
+  text-transform: uppercase;
+}
+
 .admin-slot-log {
   max-width: min(760px, calc(100vw - 2rem));
 }
@@ -1241,6 +1266,27 @@
   border-top: 1px solid var(--admin-border);
   margin-top: 1rem;
   padding-top: 1rem;
+}
+
+.admin-reschedule-box {
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--admin-surface-2) 72%, transparent);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  margin-top: 1rem;
+  padding: 0.8rem;
+}
+
+.admin-reschedule-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-reschedule-actions select {
+  min-width: 0;
 }
 
 .admin-slot-log-actions {

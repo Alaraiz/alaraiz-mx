@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { db, ensureMigrated } from "@/lib/db";
+import { userCanManageExperience } from "@/lib/admin-permissions";
 import { toPositiveInteger } from "@/lib/reservations";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +20,15 @@ export async function PUT(
 
     const body = await request.json();
     const currentResult = await db.execute({
-      sql: "SELECT booked, capacity FROM availability WHERE id = ?",
+      sql: "SELECT booked, capacity, experience_id FROM availability WHERE id = ?",
       args: [params.id],
     });
     const current = currentResult.rows[0];
     if (!current) {
       return NextResponse.json({ error: "Fecha no encontrada." }, { status: 404 });
+    }
+    if (!(await userCanManageExperience(user, String(current.experience_id)))) {
+      return NextResponse.json({ error: "No autorizado para actualizar esta fecha." }, { status: 403 });
     }
 
     const booked = Number(current.booked) || 0;

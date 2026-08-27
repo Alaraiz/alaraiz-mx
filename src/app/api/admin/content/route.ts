@@ -17,7 +17,7 @@ type ContentSqlRow = {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireRole(["admin", "editor"]);
+    const user = await requireRole(["admin"]);
     if (!user) {
       return NextResponse.json({ error: "No autorizado." }, { status: 401 });
     }
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await requireRole(["admin", "editor"]);
+    const user = await requireRole(["admin"]);
     if (!user) {
       return NextResponse.json({ error: "No autorizado." }, { status: 403 });
     }
