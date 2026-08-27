@@ -118,6 +118,13 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };",
+          }}
+        />
+        <script defer src="/_vercel/insights/script.js" />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify([
