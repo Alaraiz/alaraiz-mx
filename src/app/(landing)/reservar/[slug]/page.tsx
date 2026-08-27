@@ -49,7 +49,12 @@ const CLIP_CARD_CONTAINER_ID = "clip-card-checkout";
 const publicPaymentProvider = (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER || "manual").toLowerCase();
 const clipPublicKey = process.env.NEXT_PUBLIC_CLIP_API_KEY || "";
 const clipCheckoutExpected = publicPaymentProvider === "clip";
-const clipCheckoutEnabled = clipCheckoutExpected && Boolean(clipPublicKey);
+const clipCheckoutEnabled = clipCheckoutExpected && isConfiguredClipKey(clipPublicKey);
+
+function isConfiguredClipKey(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return Boolean(normalized) && !normalized.includes("reemplazar") && !normalized.includes("replace");
+}
 
 export default function ReservarPage() {
   const params = useParams();
@@ -115,7 +120,12 @@ export default function ReservarPage() {
   }, [selectedSlot]);
 
   useEffect(() => {
-    if (!clipCheckoutEnabled || !clipLoaded || clipCard || !window.ClipSDK) return;
+    if (!clipCheckoutExpected) return;
+    if (!clipCheckoutEnabled) {
+      setPaymentMessage("Falta configurar una API Key real de Clip para activar el formulario de tarjeta.");
+      return;
+    }
+    if (!clipLoaded || clipCard || !window.ClipSDK) return;
 
     try {
       const clip = new window.ClipSDK(clipPublicKey);
@@ -126,8 +136,9 @@ export default function ReservarPage() {
       card.mount(CLIP_CARD_CONTAINER_ID);
       setClipCard(card);
       setPaymentMessage("");
-    } catch {
-      setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip.");
+    } catch (error) {
+      console.error("[Clip SDK mount]", error);
+      setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip. Revisa que la API Key de Clip esté activa y autorizada para Checkout Transparente.");
     }
   }, [clipCard, clipLoaded]);
 
@@ -171,8 +182,8 @@ export default function ReservarPage() {
     try {
       let cardToken = "";
       if (clipCheckoutExpected) {
-        if (!clipPublicKey) {
-          throw new Error("Falta configurar NEXT_PUBLIC_CLIP_API_KEY para mostrar el formulario de pago Clip.");
+        if (!clipCheckoutEnabled) {
+          throw new Error("Falta configurar una API Key real de Clip para mostrar el formulario de pago.");
         }
         if (!clipCard) {
           throw new Error("El formulario de tarjeta todavía no está listo. Intenta de nuevo en unos segundos.");

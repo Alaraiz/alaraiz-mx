@@ -1,6 +1,7 @@
 import LandingClient, { type AvailabilitySlot, type Experience, type Facilitator } from "./landing-client";
 import { contentRowsToMap, type ContentMap } from "@/content-cms/registry";
 import { db, ensureMigrated } from "@/lib/db";
+import { getMexicoDateKey } from "@/lib/mexico-time";
 
 export const dynamic = "force-dynamic";
 
@@ -61,15 +62,16 @@ async function loadFacilitators() {
 }
 
 async function loadAvailability() {
-  const result = await db.execute(
-    `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status
-     FROM availability a
-     JOIN experiences e ON e.id = a.experience_id
-     WHERE a.status = 'open' AND e.is_published = 1
-       AND a.date >= date('now')
-       AND (a.capacity - a.booked) > 0
-     ORDER BY a.date ASC, a.time ASC`
-  );
+  const result = await db.execute({
+    sql: `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status
+          FROM availability a
+          JOIN experiences e ON e.id = a.experience_id
+          WHERE a.status = 'open' AND e.is_published = 1
+            AND a.date >= ?
+            AND (a.capacity - a.booked) > 0
+          ORDER BY a.date ASC, a.time ASC`,
+    args: [getMexicoDateKey()],
+  });
 
   return toPlainRows<AvailabilitySlot>(
     result.rows.map((row) => ({

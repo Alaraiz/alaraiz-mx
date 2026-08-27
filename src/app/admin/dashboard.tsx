@@ -6,6 +6,7 @@ import CrmManager from "./crm-manager";
 import UserManager from "./user-manager";
 import CollectionManager from "./collection-manager";
 import ContentManager from "./content-manager";
+import { getMexicoDateKey, getMexicoHour } from "@/lib/mexico-time";
 
 type Row = Record<string, string | number | null>;
 type Data = {
@@ -202,7 +203,7 @@ function Overview({
 
   // Time-sensitive greeting
   const greeting = useMemo(() => {
-    const hour = new Date().getHours();
+    const hour = getMexicoHour();
     if (hour < 12) return "Buenos días";
     if (hour < 19) return "Buenas tardes";
     return "Buenas noches";
@@ -224,7 +225,7 @@ function Overview({
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
+        const key = getMexicoDateKey(d);
         const label = d.toLocaleDateString("es-MX", { weekday: "short" });
         const total = paid
           .filter((r) => String(r.created_at || "").startsWith(key))
@@ -238,8 +239,8 @@ function Overview({
         weekEnd.setDate(weekEnd.getDate() - week * 7);
         const weekStart = new Date(weekEnd);
         weekStart.setDate(weekStart.getDate() - 6);
-        const startKey = weekStart.toISOString().slice(0, 10);
-        const endKey = weekEnd.toISOString().slice(0, 10);
+        const startKey = getMexicoDateKey(weekStart);
+        const endKey = getMexicoDateKey(weekEnd);
         const label = `${weekStart.getDate()}–${weekEnd.getDate()} ${weekEnd.toLocaleDateString("es-MX", { month: "short" })}`;
         const total = paid
           .filter((r) => {
@@ -280,7 +281,7 @@ function Overview({
 
   // Quick stats for operational message
   const pendingReservations = data.reservations.filter((r) => r.payment_status !== "paid").length;
-  const upcomingDates = data.dates.filter((d) => String(d.date) >= new Date().toISOString().slice(0, 10)).length;
+  const upcomingDates = data.dates.filter((d) => String(d.date) >= getMexicoDateKey()).length;
 
   const rangeOptions: [typeof chartRange, string][] = [
     ["7d", "7 días"],
@@ -432,7 +433,7 @@ function Calendar({ data, refresh, notify }: { data: Data; refresh: () => void; 
   const monthYear = currentMonth.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDayOfWeek = (new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() + 6) % 7; // Monday-based
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getMexicoDateKey();
   const selectedSlot = sortedDates.find((slot) => String(slot.id) === selectedSlotId) || null;
   const selectedReservations = selectedSlot ? reservationsByAvailability[String(selectedSlot.id)] || [] : [];
   const selectedExperience = selectedSlot

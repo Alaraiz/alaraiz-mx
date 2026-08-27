@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
+import { getMexicoDateKey } from "@/lib/mexico-time";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
   await ensureMigrated();
 
   const experienceId = request.nextUrl.searchParams.get("experienceId");
+  const today = getMexicoDateKey();
 
   try {
     let result;
@@ -23,22 +25,23 @@ export async function GET(request: NextRequest) {
               FROM availability a
               JOIN experiences e ON e.id = a.experience_id
               WHERE a.experience_id = ? AND a.status = 'open' AND e.is_published = 1
-                AND a.date >= date('now')
+                AND a.date >= ?
                 AND (a.capacity - a.booked) > 0
               ORDER BY a.date ASC, a.time ASC`,
-        args: [experienceId],
+        args: [experienceId, today],
       });
     } else {
-      result = await db.execute(
-        `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status,
-                e.title, e.slug, e.price, e.duration, e.cover_image_url
-         FROM availability a
-         JOIN experiences e ON e.id = a.experience_id
-         WHERE a.status = 'open' AND e.is_published = 1
-           AND a.date >= date('now')
-           AND (a.capacity - a.booked) > 0
-         ORDER BY a.date ASC, a.time ASC`
-      );
+      result = await db.execute({
+        sql: `SELECT a.id, a.experience_id, a.date, a.time, a.capacity, a.booked, a.status,
+                     e.title, e.slug, e.price, e.duration, e.cover_image_url
+              FROM availability a
+              JOIN experiences e ON e.id = a.experience_id
+              WHERE a.status = 'open' AND e.is_published = 1
+                AND a.date >= ?
+                AND (a.capacity - a.booked) > 0
+              ORDER BY a.date ASC, a.time ASC`,
+        args: [today],
+      });
     }
 
     // Add remaining capacity info
