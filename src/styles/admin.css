@@ -1343,6 +1343,32 @@
   gap: 0.32rem;
 }
 
+.admin-discount-form input,
+.admin-discount-form select {
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  color: var(--admin-text);
+  font: inherit;
+  font-size: 0.85rem;
+  min-height: 38px;
+  min-width: 0;
+  outline: none;
+  padding: 0.55rem 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+
+.admin-discount-form input:focus,
+.admin-discount-form select:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-accent-soft);
+}
+
+.admin-discount-form input::placeholder {
+  color: color-mix(in srgb, var(--admin-muted) 62%, transparent);
+}
+
 .admin-toggle-row {
   align-items: center !important;
   flex-direction: row !important;

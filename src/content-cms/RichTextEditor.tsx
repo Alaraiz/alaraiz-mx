@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { normalizeCmsHtml } from "./html";
 
 type RichTextEditorProps = {
@@ -21,21 +21,23 @@ export default function RichTextEditor({
   labelledBy,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [localValue, setLocalValue] = useState(() => normalizeCmsHtml(value));
+  const renderedValueRef = useRef(normalizeCmsHtml(value));
+  const emittedValueRef = useRef(renderedValueRef.current);
 
   useEffect(() => {
     const normalized = normalizeCmsHtml(value);
-    if (normalized !== localValue) {
-      setLocalValue(normalized);
-      if (editorRef.current && editorRef.current.innerHTML !== normalized) {
-        editorRef.current.innerHTML = normalized;
-      }
+    if (normalized === emittedValueRef.current) return;
+
+    renderedValueRef.current = normalized;
+    emittedValueRef.current = normalized;
+    if (editorRef.current && editorRef.current.innerHTML !== normalized) {
+      editorRef.current.innerHTML = normalized;
     }
-  }, [value, localValue]);
+  }, [value]);
 
   function sync() {
     const next = normalizeCmsHtml(editorRef.current?.innerHTML || "");
-    setLocalValue(next);
+    emittedValueRef.current = next;
     onChange(next);
   }
 
@@ -94,7 +96,7 @@ export default function RichTextEditor({
         suppressContentEditableWarning
         onInput={sync}
         onBlur={sync}
-        dangerouslySetInnerHTML={{ __html: localValue }}
+        dangerouslySetInnerHTML={{ __html: renderedValueRef.current }}
       />
     </div>
   );
