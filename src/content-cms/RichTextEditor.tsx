@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { normalizeCmsHtml } from "./html";
 
 type RichTextEditorProps = {
@@ -15,69 +15,89 @@ type Command = {
   run: () => void;
 };
 
+function htmlToEditorText(value: string) {
+  return normalizeCmsHtml(value).replace(/<br\s*\/?>/gi, "\n");
+}
+
+function editorTextToHtml(value: string) {
+  return normalizeCmsHtml(value.replace(/\n/g, "<br>"));
+}
+
+function stripTags(value: string) {
+  return value.replace(/<[^>]*>/g, "");
+}
+
 export default function RichTextEditor({
   value,
   onChange,
   labelledBy,
 }: RichTextEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const initialValueRef = useRef(normalizeCmsHtml(value));
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [draft, setDraft] = useState(() => htmlToEditorText(value));
 
   useEffect(() => {
-    const normalized = normalizeCmsHtml(value);
-    const editor = editorRef.current;
-    if (!editor) {
-      initialValueRef.current = normalized;
-      return;
-    }
-
-    if (document.activeElement === editor) {
-      return;
-    }
-
-    initialValueRef.current = normalized;
-    if (editor.innerHTML !== normalized) {
-      editor.innerHTML = normalized;
-    }
+    if (document.activeElement === textareaRef.current) return;
+    setDraft(htmlToEditorText(value));
   }, [value]);
 
-  function sync(options: { normalize?: boolean } = {}) {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    const next = options.normalize ? normalizeCmsHtml(editor.innerHTML) : editor.innerHTML;
-    if (options.normalize && editor.innerHTML !== next) {
-      editor.innerHTML = next;
-    }
-
-    onChange(next);
+  function emit(nextDraft: string) {
+    setDraft(nextDraft);
+    onChange(editorTextToHtml(nextDraft));
   }
 
-  function exec(command: string, argument?: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false, argument);
-    sync();
+  function replaceSelection(nextText: string, selectionStart: number, selectionEnd: number) {
+    const before = draft.slice(0, selectionStart);
+    const after = draft.slice(selectionEnd);
+    emit(`${before}${nextText}${after}`);
+
+    window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(
+        selectionStart,
+        selectionStart + nextText.length
+      );
+    });
+  }
+
+  function wrapSelection(before: string, after: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selected = draft.slice(selectionStart, selectionEnd) || "texto";
+    replaceSelection(
+      `${before}${selected}${after}`,
+      selectionStart,
+      selectionEnd
+    );
+  }
+
+  function alignSelection(value: "left" | "center" | "right") {
+    wrapSelection(`<div style="text-align: ${value}">`, "</div>");
   }
 
   function addLink() {
     const href = window.prompt("URL del enlace");
     if (!href) return;
-    exec("createLink", href);
+    wrapSelection(`<a href="${href}" target="_blank">`, "</a>");
   }
 
   function clearFormat() {
-    exec("removeFormat");
+    emit(stripTags(draft));
   }
 
   const commands: Command[] = [
-    { label: "B", title: "Negritas", run: () => exec("bold") },
-    { label: "I", title: "Itálicas", run: () => exec("italic") },
-    { label: "U", title: "Subrayado", run: () => exec("underline") },
-    { label: "•", title: "Lista", run: () => exec("insertUnorderedList") },
-    { label: "1.", title: "Lista numerada", run: () => exec("insertOrderedList") },
-    { label: "←", title: "Alinear izquierda", run: () => exec("justifyLeft") },
-    { label: "↔", title: "Centrar", run: () => exec("justifyCenter") },
-    { label: "⇥", title: "Alinear derecha", run: () => exec("justifyRight") },
+    { label: "B", title: "Negritas", run: () => wrapSelection("<strong>", "</strong>") },
+    { label: "I", title: "Itálicas", run: () => wrapSelection("<em>", "</em>") },
+    { label: "U", title: "Subrayado", run: () => wrapSelection("<u>", "</u>") },
+    { label: "•", title: "Lista", run: () => wrapSelection("<ul><li>", "</li></ul>") },
+    { label: "1.", title: "Lista numerada", run: () => wrapSelection("<ol><li>", "</li></ol>") },
+    { label: "←", title: "Alinear izquierda", run: () => alignSelection("left") },
+    { label: "↔", title: "Centrar", run: () => alignSelection("center") },
+    { label: "⇥", title: "Alinear derecha", run: () => alignSelection("right") },
     { label: "🔗", title: "Enlace", run: addLink },
     { label: "Tx", title: "Limpiar formato", run: clearFormat },
   ];
@@ -98,17 +118,13 @@ export default function RichTextEditor({
           </button>
         ))}
       </div>
-      <div
-        ref={editorRef}
+      <textarea
+        ref={textareaRef}
         className="cms-rich-surface"
-        contentEditable
-        role="textbox"
-        aria-multiline="true"
         aria-labelledby={labelledBy}
-        suppressContentEditableWarning
-        onInput={() => sync()}
-        onBlur={() => sync({ normalize: true })}
-        dangerouslySetInnerHTML={{ __html: initialValueRef.current }}
+        value={draft}
+        onChange={(event) => emit(event.target.value)}
+        onBlur={() => emit(htmlToEditorText(editorTextToHtml(draft)))}
       />
     </div>
   );
