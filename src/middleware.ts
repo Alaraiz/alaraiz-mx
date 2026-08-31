@@ -37,9 +37,13 @@ export async function middleware(request: NextRequest) {
 
     if (!role) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+        const response = NextResponse.json({ error: "No autorizado." }, { status: 401 });
+        response.cookies.delete(COOKIE_NAME);
+        return response;
       }
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      const response = NextResponse.redirect(new URL("/admin/login", request.url));
+      response.cookies.delete(COOKIE_NAME);
+      return response;
     }
 
     // Check admin-only API routes

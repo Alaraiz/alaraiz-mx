@@ -1,9 +1,7 @@
 "use client";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,11 +18,11 @@ export default function LoginPage() {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await r.json();
-    if (!r.ok) setError(data.error || "No se pudo iniciar sesión");
-    else router.replace("/admin");
-    setLoading(false);
-  }
+	    const data = await r.json();
+	    if (!r.ok) setError(data.error || "No se pudo iniciar sesión");
+	    else window.location.assign("/admin");
+	    setLoading(false);
+	  }
 
   return (
     <main className="admin-auth">
