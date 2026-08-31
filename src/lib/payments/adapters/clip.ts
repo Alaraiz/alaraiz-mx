@@ -48,8 +48,12 @@ export class ClipGateway implements PaymentGateway {
     if (!input.cardToken) {
       throw new Error("[ClipGateway] Falta el token de tarjeta de Clip.");
     }
-    if (!input.customerPhone) {
-      throw new Error("[ClipGateway] Clip requiere teléfono del cliente para procesar el pago.");
+    const customerPhone = normalizeClipPhone(input.customerPhone);
+    if (customerPhone.length < 10) {
+      throw new ClipPaymentError(
+        "Clip requiere un teléfono válido de 10 dígitos para procesar el pago.",
+        400
+      );
     }
 
     const body = JSON.stringify({
@@ -62,7 +66,7 @@ export class ClipGateway implements PaymentGateway {
       },
       customer: {
         email: input.customerEmail,
-        phone: input.customerPhone,
+        phone: customerPhone,
       },
     });
 
@@ -189,6 +193,11 @@ function buildClipAuthorization(): string {
 
 function base64(value: string): string {
   return Buffer.from(value, "utf-8").toString("base64");
+}
+
+function normalizeClipPhone(value?: string): string {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
 /** Human-readable scheme label for logs (never exposes the credential). */

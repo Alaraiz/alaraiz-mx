@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Script from "next/script";
 
@@ -117,6 +117,7 @@ export default function ReservarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [clipLoaded, setClipLoaded] = useState(false);
   const [clipCard, setClipCard] = useState<ClipCard | null>(null);
+  const [clipResetNonce, setClipResetNonce] = useState(0);
   const [clipRequiresHttps, setClipRequiresHttps] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
@@ -124,6 +125,7 @@ export default function ReservarPage() {
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   const [discountMessage, setDiscountMessage] = useState("");
   const [validatingDiscount, setValidatingDiscount] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     async function load() {
@@ -171,6 +173,7 @@ export default function ReservarPage() {
   const subtotalAmount = selectedSlot ? (selectedSlot.price || 0) * attendees : 0;
   const totalAmount = Math.max(0, subtotalAmount - (appliedDiscount?.amount || 0));
   const needsCardPayment = clipCheckoutExpected && totalAmount > 0;
+  const clipCardContainerId = `${CLIP_CARD_CONTAINER_ID}-${clipResetNonce}`;
 
   useEffect(() => {
     if (!clipCheckoutExpected || !needsCardPayment) return;
@@ -185,7 +188,7 @@ export default function ReservarPage() {
       return;
     }
     if (!clipLoaded || clipCard || !window.ClipSDK) return;
-    const mountTarget = document.getElementById(CLIP_CARD_CONTAINER_ID);
+    const mountTarget = document.getElementById(clipCardContainerId);
     if (!mountTarget) return;
 
     try {
@@ -195,14 +198,14 @@ export default function ReservarPage() {
         locale: "es",
         paymentAmount: totalAmount,
       });
-      card.mount(CLIP_CARD_CONTAINER_ID);
+      card.mount(clipCardContainerId);
       setClipCard(card);
       setPaymentMessage("");
     } catch (error) {
       console.error("[Clip SDK mount]", error);
       setPaymentMessage("No pudimos montar el formulario de tarjeta de Clip. Revisa que la API Key de Clip esté activa y autorizada para Checkout Transparente.");
     }
-  }, [clipCard, clipLoaded, needsCardPayment, selectedSlot, totalAmount]);
+  }, [clipCard, clipLoaded, clipCardContainerId, needsCardPayment, selectedSlot, totalAmount]);
 
   useEffect(() => {
     if (!clipCard || !totalAmount) return;
@@ -275,6 +278,7 @@ export default function ReservarPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSlot) return;
+    if (submittingRef.current) return;
 
     const cleanName = customer.name.trim();
     const cleanEmail = customer.email.trim().toLowerCase();
@@ -290,6 +294,7 @@ export default function ReservarPage() {
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     setError("");
     setPaymentResult(null);
@@ -361,9 +366,15 @@ export default function ReservarPage() {
         actionUrl: redirectUrl,
         actionLabel: isPending ? "Continuar verificación" : "Ver confirmación",
       });
+      submittingRef.current = false;
       setSubmitting(false);
       setPaymentMessage("");
     } catch (e) {
+      if (needsCardPayment) {
+        setClipCard(null);
+        setClipResetNonce((current) => current + 1);
+      }
+      submittingRef.current = false;
       setError(e instanceof Error ? e.message : "No pudimos crear la reserva.");
       setSubmitting(false);
       setPaymentMessage("");
@@ -659,7 +670,7 @@ export default function ReservarPage() {
                           <span>Para probar el formulario de tarjeta en local, abre esta página con <code>npm run dev:https</code>.</span>
                         </div>
                       ) : (
-                        <div id={CLIP_CARD_CONTAINER_ID} className="clip-card-frame" />
+                        <div key={clipCardContainerId} id={clipCardContainerId} className="clip-card-frame" />
                       )}
                       <p className="payment-note">Tus datos de tarjeta se capturan en el iframe seguro de Clip; Raíz no los recibe ni los guarda.</p>
                     </div>

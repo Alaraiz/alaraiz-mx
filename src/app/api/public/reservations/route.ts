@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
-import { confirmPaidReservation, toPositiveInteger } from "@/lib/reservations";
+import { confirmPaidReservation, releaseReservationCapacity, toPositiveInteger } from "@/lib/reservations";
 import { ClipPaymentError } from "@/lib/payments/adapters/clip";
 import { calculateDiscount, registerDiscountUse } from "@/lib/discounts";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
@@ -51,8 +51,9 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     const customerName = String(customer?.name || "").trim();
     const customerEmail = String(customer?.email || "").trim().toLowerCase();
-    const customerPhone = String(customer?.phone || "").trim();
+    const rawCustomerPhone = String(customer?.phone || "").trim();
     const provider = paymentProvider;
+    const customerPhone = provider === "clip" ? normalizeClipPhone(rawCustomerPhone) : rawCustomerPhone;
 
     if (!experienceId || !availabilityId || !customerName || !isValidEmail(customerEmail)) {
       return NextResponse.json(
@@ -60,9 +61,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (provider === "clip" && !customerPhone) {
+    if (provider === "clip" && customerPhone.length < 10) {
       return NextResponse.json(
-        { error: "Para pagar con Clip necesitamos teléfono." },
+        { error: "Para pagar con Clip necesitamos un teléfono válido de 10 dígitos." },
         { status: 400 }
       );
     }
@@ -271,6 +272,12 @@ export async function POST(request: NextRequest) {
       discount,
     });
   } catch (error) {
+    if (reservationId) {
+      await releaseReservationCapacity(reservationId).catch(() => {});
+      heldAvailabilityId = null;
+      heldAttendeesCount = 0;
+    }
+
     if (heldAvailabilityId && heldAttendeesCount > 0) {
       await db.execute({
         sql: "UPDATE availability SET booked = MAX(booked - ?, 0) WHERE id = ?",
@@ -317,6 +324,11 @@ function baseUrlFromRequest(request: NextRequest) {
   const requestBaseUrl = host ? `${proto}://${host}` : "http://localhost:3000";
   const isLocalRequest = host?.includes("localhost") || host?.includes("127.0.0.1");
   return isLocalRequest ? requestBaseUrl : process.env.NEXT_PUBLIC_SITE_URL || requestBaseUrl;
+}
+
+function normalizeClipPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
 function buildReservationNote(intake: {
