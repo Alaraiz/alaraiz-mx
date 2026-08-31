@@ -21,23 +21,35 @@ export default function RichTextEditor({
   labelledBy,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const renderedValueRef = useRef(normalizeCmsHtml(value));
-  const emittedValueRef = useRef(renderedValueRef.current);
+  const initialValueRef = useRef(normalizeCmsHtml(value));
 
   useEffect(() => {
     const normalized = normalizeCmsHtml(value);
-    if (normalized === emittedValueRef.current) return;
+    const editor = editorRef.current;
+    if (!editor) {
+      initialValueRef.current = normalized;
+      return;
+    }
 
-    renderedValueRef.current = normalized;
-    emittedValueRef.current = normalized;
-    if (editorRef.current && editorRef.current.innerHTML !== normalized) {
-      editorRef.current.innerHTML = normalized;
+    if (document.activeElement === editor) {
+      return;
+    }
+
+    initialValueRef.current = normalized;
+    if (editor.innerHTML !== normalized) {
+      editor.innerHTML = normalized;
     }
   }, [value]);
 
-  function sync() {
-    const next = normalizeCmsHtml(editorRef.current?.innerHTML || "");
-    emittedValueRef.current = next;
+  function sync(options: { normalize?: boolean } = {}) {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const next = options.normalize ? normalizeCmsHtml(editor.innerHTML) : editor.innerHTML;
+    if (options.normalize && editor.innerHTML !== next) {
+      editor.innerHTML = next;
+    }
+
     onChange(next);
   }
 
@@ -94,9 +106,9 @@ export default function RichTextEditor({
         aria-multiline="true"
         aria-labelledby={labelledBy}
         suppressContentEditableWarning
-        onInput={sync}
-        onBlur={sync}
-        dangerouslySetInnerHTML={{ __html: renderedValueRef.current }}
+        onInput={() => sync()}
+        onBlur={() => sync({ normalize: true })}
+        dangerouslySetInnerHTML={{ __html: initialValueRef.current }}
       />
     </div>
   );
