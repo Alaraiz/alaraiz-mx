@@ -1400,10 +1400,15 @@
   display: block;
 }
 
-.admin-error-text {
+.admin-error-text,
+.admin-success-text {
   color: var(--admin-danger);
   font-size: 0.78rem;
   margin: 0;
+}
+
+.admin-success-text {
+  color: var(--admin-success);
 }
 
 .admin-permissions-grid {

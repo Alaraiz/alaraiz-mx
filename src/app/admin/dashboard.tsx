@@ -1061,6 +1061,7 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("error");
   const [form, setForm] = useState({
     code: "",
     label: "",
@@ -1087,6 +1088,7 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
     setEditing(null);
     setShowForm(false);
     setMessage("");
+    setMessageTone("error");
     setForm({ code: "", label: "", discountType: "percent", value: "", maxUses: "", startsAt: "", expiresAt: "", isActive: true });
   }
 
@@ -1107,8 +1109,39 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
 
   async function saveDiscount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const code = form.code.trim();
+    const value = Number(form.value);
+    const maxUses = form.maxUses ? Number(form.maxUses) : null;
+
+    if (!code) {
+      setMessage("El código es obligatorio.");
+      setMessageTone("error");
+      return;
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      setMessage("El valor del descuento debe ser mayor a cero.");
+      setMessageTone("error");
+      return;
+    }
+    if (form.discountType === "percent" && value > 100) {
+      setMessage("El porcentaje no puede ser mayor a 100.");
+      setMessageTone("error");
+      return;
+    }
+    if (maxUses != null && (!Number.isInteger(maxUses) || maxUses < 1)) {
+      setMessage("El límite de usos debe ser un número entero mayor a cero.");
+      setMessageTone("error");
+      return;
+    }
+    if (form.startsAt && form.expiresAt && form.startsAt > form.expiresAt) {
+      setMessage("La fecha de inicio no puede ser posterior a la fecha de expiración.");
+      setMessageTone("error");
+      return;
+    }
+
     setSaving(true);
     setMessage("");
+    setMessageTone("error");
     try {
       const response = await fetch(editing ? `/api/admin/discounts/${String(editing.id)}` : "/api/admin/discounts", {
         method: editing ? "PUT" : "POST",
@@ -1116,10 +1149,17 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
         body: JSON.stringify(form),
       });
       const data = await readJson<{ error?: string }>(response, "No pudimos guardar el descuento.");
+      if (response.status === 401 || response.status === 403) {
+        window.location.assign("/admin/login");
+        return;
+      }
       if (!response.ok) throw new Error(data.error || "No pudimos guardar el descuento.");
       reset();
       await loadDiscounts();
+      setMessageTone("success");
+      setMessage(editing ? "Código actualizado." : "Código creado.");
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "No pudimos guardar el descuento.");
     } finally {
       setSaving(false);
@@ -1134,6 +1174,7 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
       if (!response.ok) throw new Error(data.error || "No pudimos eliminar el descuento.");
       await loadDiscounts();
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : "No pudimos eliminar el descuento.");
     }
   }
@@ -1193,7 +1234,7 @@ function DiscountManager({ initialDiscounts }: { initialDiscounts: Row[] }) {
         </form>
       )}
 
-      {message && <p className="admin-error-text">{message}</p>}
+      {message && <p className={messageTone === "success" ? "admin-success-text" : "admin-error-text"}>{message}</p>}
 
       <div className="admin-discount-list">
         {discounts.length === 0 ? (
