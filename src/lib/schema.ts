@@ -35,6 +35,8 @@ export async function migrate() {
       zone TEXT,
       language TEXT DEFAULT 'ES / EN',
       includes TEXT,
+      email_meeting_point TEXT,
+      email_what_to_expect TEXT,
       title_en TEXT,
       tag_en TEXT,
       description_en TEXT,
@@ -194,6 +196,18 @@ export async function migrate() {
     await db.execute("ALTER TABLE experiences ADD COLUMN gallery_images_json TEXT DEFAULT '[]'");
   } catch {
     // Column already exists — ignore
+  }
+
+  const experienceEmailColumns = [
+    ["email_meeting_point", "TEXT"],
+    ["email_what_to_expect", "TEXT"],
+  ];
+  for (const [col, type] of experienceEmailColumns) {
+    try {
+      await db.execute(`ALTER TABLE experiences ADD COLUMN ${col} ${type}`);
+    } catch {
+      // Column already exists — ignore
+    }
   }
 
   try {

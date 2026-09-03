@@ -164,6 +164,8 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
           zone: values.zone || null,
           language: values.language || null,
           includes: values.includes || null,
+          emailMeetingPoint: values.emailMeetingPoint || null,
+          emailWhatToExpect: values.emailWhatToExpect || null,
           titleEn: values.titleEn || null,
           tagEn: values.tagEn || null,
           descriptionEn: values.descriptionEn || null,
@@ -341,6 +343,31 @@ export default function ExperienceManager({ data, refresh, notify }: Props) {
               <label>
                 Descripción
                 <textarea name="description" rows={4} defaultValue={String(active.description || "")} placeholder="Describe la experiencia para la página de detalle" />
+              </label>
+            </div>
+
+            <div className="admin-panel" style={{ marginTop: "0.9rem", padding: "1rem 1.1rem" }}>
+              <p className="admin-kicker" style={{ marginTop: 0 }}>Correo de confirmación</p>
+              <p className="admin-muted" style={{ marginTop: 0 }}>
+                Estos campos no salen en la landing. Se usan dentro del mail de confirmación para que la info operativa llegue clara y completa.
+              </p>
+              <label>
+                Punto de encuentro
+                <textarea
+                  name="emailMeetingPoint"
+                  rows={2}
+                  defaultValue={String(active.email_meeting_point || "")}
+                  placeholder="Ej. Vendaval, Dinamarca 47, Juárez"
+                />
+              </label>
+              <label>
+                Qué esperar
+                <textarea
+                  name="emailWhatToExpect"
+                  rows={3}
+                  defaultValue={String(active.email_what_to_expect || "")}
+                  placeholder="Ej. Recorrido a pie por distintos proyectos locales, ~5 km a ritmo tranquilo y con pausas."
+                />
               </label>
             </div>
 

@@ -1,5 +1,10 @@
 import { db } from "./db";
-import { sendEmail, tplReservationConfirmed } from "./email";
+import {
+  createReservationTicket,
+  createTicketFilename,
+  sendEmail,
+  tplReservationConfirmed,
+} from "./email";
 
 export type ReservationConfirmation =
   | {
@@ -27,7 +32,7 @@ export async function getReservationByPaymentReference(reference: string) {
     sql: `SELECT r.id, r.status, r.payment_status, r.payment_method, r.customer_id,
                  r.experience_id, r.availability_id, r.attendees_count, r.amount,
                  r.subtotal_amount, r.discount_code, r.discount_amount, r.payment_reference, r.capacity_held,
-                 c.name, c.email, e.title, a.date, a.time
+                 c.name, c.email, e.title, e.duration, e.email_meeting_point, e.email_what_to_expect, a.date, a.time
           FROM reservations r
           LEFT JOIN customers c ON c.id = r.customer_id
           LEFT JOIN experiences e ON e.id = r.experience_id
@@ -73,15 +78,38 @@ export async function sendReservationConfirmationEmail(referenceOrReservationId:
     time: reservation.time ? String(reservation.time) : null,
     attendeesCount: toPositiveInteger(reservation.attendees_count, 1),
     amount: Number(reservation.amount) || 0,
-    subtotalAmount: Number(reservation.subtotal_amount) || 0,
     discountAmount: Number(reservation.discount_amount) || 0,
     discountCode: reservation.discount_code ? String(reservation.discount_code) : null,
+    duration: reservation.duration ? String(reservation.duration) : null,
+    meetingPoint: reservation.email_meeting_point ? String(reservation.email_meeting_point) : null,
+    whatToExpect: reservation.email_what_to_expect ? String(reservation.email_what_to_expect) : null,
   });
 
   return sendEmail({
     to: String(reservation.email),
     subject: tpl.subject,
     html: tpl.html,
+    attachments: [
+      {
+        filename: createTicketFilename(String(reservation.title || "recreo")),
+        content: createReservationTicket({
+          reservationId: String(reservation.id),
+          paymentReference: String(reservation.payment_reference || ""),
+          customerName: String(reservation.name || "amiga/o"),
+          experienceTitle: String(reservation.title || "Tu experiencia"),
+          date: reservation.date ? String(reservation.date) : null,
+          time: reservation.time ? String(reservation.time) : null,
+          attendeesCount: toPositiveInteger(reservation.attendees_count, 1),
+          amount: Number(reservation.amount) || 0,
+          discountAmount: Number(reservation.discount_amount) || 0,
+          discountCode: reservation.discount_code ? String(reservation.discount_code) : null,
+          duration: reservation.duration ? String(reservation.duration) : null,
+          meetingPoint: reservation.email_meeting_point ? String(reservation.email_meeting_point) : null,
+          whatToExpect: reservation.email_what_to_expect ? String(reservation.email_what_to_expect) : null,
+        }),
+        contentType: "text/plain; charset=utf-8",
+      },
+    ],
   });
 }
 

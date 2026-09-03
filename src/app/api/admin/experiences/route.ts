@@ -10,7 +10,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, tag, description, duration, price, capacity, coverImageUrl, galleryImages, isPublished, collection, facilitatorId, pace, zone, language, includes, titleEn, tagEn, descriptionEn, includesEn } = body;
+    const {
+      title,
+      tag,
+      description,
+      duration,
+      price,
+      capacity,
+      coverImageUrl,
+      galleryImages,
+      isPublished,
+      collection,
+      facilitatorId,
+      pace,
+      zone,
+      language,
+      includes,
+      emailMeetingPoint,
+      emailWhatToExpect,
+      titleEn,
+      tagEn,
+      descriptionEn,
+      includesEn,
+    } = body;
 
     if (!title) {
       return NextResponse.json({ error: "El nombre es obligatorio." }, { status: 400 });
@@ -22,8 +44,14 @@ export async function POST(request: NextRequest) {
       .replace(/^-|-$/g, "");
 
     const result = await db.execute({
-      sql: `INSERT INTO experiences (title, slug, tag, description, duration, price, capacity, cover_image_url, gallery_images_json, is_published, collection, facilitator_id, pace, zone, language, includes, title_en, tag_en, description_en, includes_en)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      sql: `INSERT INTO experiences (
+              title, slug, tag, description, duration, price, capacity,
+              cover_image_url, gallery_images_json, is_published, collection,
+              facilitator_id, pace, zone, language, includes,
+              email_meeting_point, email_what_to_expect,
+              title_en, tag_en, description_en, includes_en
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       args: [
         title, slug, tag || null, description || null, duration || null,
         price ?? null, capacity || 12, coverImageUrl || null,
@@ -31,6 +59,7 @@ export async function POST(request: NextRequest) {
         isPublished ? 1 : 0,
         collection || null, facilitatorId || null, pace || null, zone || null,
         language || "ES / EN", includes || null,
+        emailMeetingPoint || null, emailWhatToExpect || null,
         titleEn || null, tagEn || null, descriptionEn || null, includesEn || null,
       ],
     });

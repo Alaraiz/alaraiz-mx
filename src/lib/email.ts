@@ -7,9 +7,14 @@ type SendArgs = {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType?: string;
+  }>;
 };
 
-type ReservationEmailData = {
+export type ReservationEmailData = {
   reservationId: string;
   paymentReference?: string | null;
   customerName: string;
@@ -18,12 +23,14 @@ type ReservationEmailData = {
   time?: string | null;
   attendeesCount: number;
   amount: number;
-  subtotalAmount?: number | null;
   discountAmount?: number | null;
   discountCode?: string | null;
+  duration?: string | null;
+  meetingPoint?: string | null;
+  whatToExpect?: string | null;
 };
 
-export async function sendEmail({ to, subject, html }: SendArgs): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+export async function sendEmail({ to, subject, html, attachments }: SendArgs): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     console.log(`[email omitido - falta RESEND_API_KEY] para=${to} asunto="${subject}"`);
@@ -37,6 +44,11 @@ export async function sendEmail({ to, subject, html }: SendArgs): Promise<{ ok: 
       to,
       subject,
       html,
+      attachments: attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: Buffer.from(attachment.content).toString("base64"),
+        contentType: attachment.contentType,
+      })),
     });
 
     if (error) {
@@ -95,47 +107,87 @@ function formatMoney(value: number) {
   return `$${value.toLocaleString("es-MX")} MXN`;
 }
 
-function formatReservationDate(date?: string | null, time?: string | null) {
-  if (!date && !time) return "Por confirmar";
-  if (!date) return time || "Por confirmar";
-
-  const label = new Date(`${date}T12:00:00Z`).toLocaleDateString("es-MX", {
+function formatExperienceDate(date?: string | null) {
+  if (!date) return "Por confirmar";
+  const parts = new Intl.DateTimeFormat("es-MX", {
     weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+    day: "2-digit",
+    month: "short",
     timeZone: "UTC",
-  });
+  }).formatToParts(new Date(`${date}T12:00:00Z`));
+  const weekday = capitalize(parts.find((part) => part.type === "weekday")?.value || "");
+  const day = parts.find((part) => part.type === "day")?.value || "";
+  const month = (parts.find((part) => part.type === "month")?.value || "").replace(".", "").toUpperCase();
+  return [weekday, day, month].filter(Boolean).join(" ");
+}
 
-  return time ? `${label} · ${time} h` : label;
+function formatExperienceTime(time?: string | null) {
+  return time ? `${time} hrs` : "Por confirmar";
+}
+
+function capitalize(value: string) {
+  return value ? value[0].toUpperCase() + value.slice(1) : value;
+}
+
+function textToHtml(value: string) {
+  return escapeHtml(value).replace(/\n/g, "<br/>");
+}
+
+export function createReservationTicket(data: ReservationEmailData) {
+  return [
+    "re·creo by raíz · Ciudad de México",
+    "",
+    `Entrada para: ${data.experienceTitle}`,
+    `Nombre: ${data.customerName}`,
+    `Fecha: ${formatExperienceDate(data.date)}`,
+    `Hora: ${formatExperienceTime(data.time)}`,
+    `Punto de encuentro: ${data.meetingPoint || "Por confirmar"}`,
+    `Referencia: ${data.paymentReference || data.reservationId}`,
+    `Personas: ${data.attendeesCount}`,
+    `Total: ${formatMoney(data.amount)}`,
+  ].join("\n");
+}
+
+export function createTicketFilename(title: string) {
+  const slug = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `entrada-${slug || "recreo"}.txt`;
 }
 
 export function tplReservationConfirmed(data: ReservationEmailData): { subject: string; html: string } {
-  const details = [
-    fila("Experiencia", data.experienceTitle),
-    fila("Fecha", formatReservationDate(data.date, data.time)),
-    fila("Personas", String(data.attendeesCount)),
-    fila("Total", formatMoney(data.amount)),
-    data.discountAmount && data.discountAmount > 0
-      ? fila(
-          "Descuento",
-          `${data.discountCode || "Aplicado"} · -${formatMoney(data.discountAmount).replace("$", "$")}`
-        )
-      : "",
-    data.paymentReference ? fila("Referencia", data.paymentReference) : fila("Reserva", data.reservationId),
-  ].filter(Boolean).join("");
-
   return {
-    subject: `Reserva confirmada · ${data.experienceTitle}`,
+    subject: `Tu llave a la ciudad oculta · Bienvenido a la raíz · ${data.experienceTitle}`,
     html: layout(
-      "Tu lugar ya está apartado",
-      `Hola ${escapeHtml(data.customerName)}, gracias por reservar con <strong style="color:#163229">Raíz</strong>.<br/><br/>
-       Tu lugar para <strong style="color:#163229">${escapeHtml(data.experienceTitle)}</strong> ya quedó confirmado. Diseñamos cada salida en grupos pequeños y con anfitriones que conocen la ciudad desde adentro; este correo es tu referencia de reserva.
-       <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:16px;background:#f7f3eb;border:1px solid rgba(22,50,41,.09);border-radius:12px;padding:14px 16px;width:100%">
-         ${details}
+      "Tu llave a la ciudad oculta",
+      `<p style="margin:0 0 16px">¡Hola, ${escapeHtml(data.customerName)}!</p>
+       <p style="margin:0 0 16px">Ya está: tu lugar está confirmado y no lo suelta nadie.</p>
+       <p style="margin:0 0 16px">Somos pocos, ni uno más, y uno de esos lugares es tuyo. Así que sí: esta es tu llave a la ciudad oculta.</p>
+       <p style="margin:0 0 16px">Bienvenido a la raíz — nos dio muchísimo gusto ver tu nombre en la lista para <strong style="color:#163229">${escapeHtml(data.experienceTitle)}</strong>.</p>
+       <p style="margin:0 0 16px">Nos vemos pronto para recorrer esta historia desde adentro y compartir la ciudad como se vive de verdad.</p>
+       <p style="margin:0 0 12px">Aquí lo importante, para que no lo tengas que buscar:</p>
+       <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:0;background:#f7f3eb;border:1px solid rgba(22,50,41,.09);border-radius:12px;padding:14px 16px;width:100%">
+         ${fila("Punto de encuentro", escapeHtml(data.meetingPoint || "Por confirmar"))}
+         ${fila("Cuándo", formatExperienceDate(data.date))}
+         ${fila("Hora", formatExperienceTime(data.time))}
+         ${data.duration ? fila("Duración", escapeHtml(data.duration)) : ""}
+         ${fila("Qué esperar", textToHtml(data.whatToExpect || "Pronto te compartiremos este detalle."))}
        </table>
-       <p style="margin:14px 0 0">Si hay indicaciones previas, punto de encuentro o recomendaciones útiles para vivir mejor la experiencia, te las compartiremos por este mismo medio.</p>
-       <p style="margin:12px 0 0">Nos vemos pronto,<br/><strong style="color:#163229">El colectivo Raíz</strong></p>`,
+       <p style="margin:16px 0 10px">Te recomendamos traer:</p>
+       <ul style="margin:0 0 16px 18px;padding:0;color:#163229">
+         <li style="margin:0 0 8px">Zapatos cómodos</li>
+         <li style="margin:0 0 8px">Gorra y/o bloqueador solar</li>
+         <li style="margin:0 0 8px">Botella de agua reutilizable</li>
+         <li style="margin:0 0 8px">Paraguas / chamarra</li>
+       </ul>
+       <p style="margin:0 0 16px">Cómo llegar: te sugerimos transporte público o rideshare — podrían presentarse cierres vehiculares y el estacionamiento en la zona es limitado.</p>
+       <p style="margin:0 0 16px">Te va adjunta tu entrada. No hace falta imprimirla ni enseñarla en la puerta: es tuya, para presumirla si quieres y para que sepas que ya estás dentro. Si la compartes, etiquétanos: nos encanta ver quién viene.</p>
+       <p style="margin:0 0 16px">Y si la vida se atraviesa y no puedes venir, avísanos con tiempo (24hrs para rembolso) y le damos tu lugar a alguien más.</p>
+       <p style="margin:0 0 16px">Ya nos queremos ver,<br/><strong style="color:#163229">El equipo de re·creo</strong></p>
+       <p style="margin:0;color:#6f7b76;font-size:12px">re·creo by raíz · Ciudad de México<br/>alaraiz.mx · recreobyraiz@pm.me</p>`,
       "Ver confirmación",
       `${siteUrl()}/confirmacion?ref=${encodeURIComponent(data.paymentReference || data.reservationId)}`
     ),
