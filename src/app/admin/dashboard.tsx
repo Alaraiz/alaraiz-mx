@@ -557,12 +557,11 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
 
   async function deleteReservation(reservation: Row) {
     const paid = String(reservation.payment_status) === "paid";
-    if (paid) {
-      notify("No se puede borrar desde calendario una reserva pagada. Cámbiala desde pagos/CRM para conservar historial.");
-      return;
-    }
     const label = `${String(reservation.name || "esta persona")} · ${String(reservation.attendees_count || 1)} pax`;
-    if (!window.confirm(`¿Eliminar ${label} y liberar sus cupos?`)) return;
+    const paidWarning = paid
+      ? "\n\nEsta reserva aparece como pagada. Esta acción NO hace reembolso ni mueve dinero en Clip; solo quita a esta persona de la lista y libera sus cupos."
+      : "";
+    if (!window.confirm(`¿Quitar de esta fecha a ${label}? Se eliminará solo esta reserva y se liberarán sus cupos.${paidWarning}`)) return;
 
     try {
       const res = await fetch(`/api/admin/reservations/${String(reservation.id)}`, {
@@ -865,18 +864,15 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                             <span style={{ color: String(r.payment_status) === "paid" ? "#6c6" : "#e95" }}>
                               {String(r.payment_status)}
                             </span>
-                            {String(r.payment_status) !== "paid" && (
-                              <>
-                                <span>·</span>
-                                <button
-                                  type="button"
-                                  className="admin-link-button"
-                                  onClick={() => deleteReservation(r)}
-                                >
-                                  Eliminar
-                                </button>
-                              </>
-                            )}
+                            <span>·</span>
+                            <button
+                              type="button"
+                              className="admin-link-button"
+                              onClick={() => deleteReservation(r)}
+                              title={`Quitar solo a ${String(r.name || "esta persona")} de esta fecha`}
+                            >
+                              Quitar de esta fecha
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -963,11 +959,9 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                         {reservation.referral_source && <p><strong>Origen:</strong> {String(reservation.referral_source)}</p>}
                       </div>
                     )}
-                    {String(reservation.payment_status) !== "paid" && (
-                      <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
-                        Eliminar y liberar cupos
-                      </button>
-                    )}
+                    <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
+                      Quitar esta reserva y liberar cupos
+                    </button>
                   </article>
                 ))
               )}

@@ -168,7 +168,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
 
   async function deleteCustomer() {
     if (!selected) return;
-    if (!window.confirm(`¿Eliminar a ${text(selected.name)}? También se borrarán sus reservas y se liberarán cupos pendientes.`)) return;
+    if (!window.confirm(`¿Eliminar el contacto ${text(selected.name)}? También se borrarán todas sus reservas y se liberarán sus cupos. Esto no hace reembolsos ni movimientos en Clip.`)) return;
 
     try {
       const res = await fetch(`/api/admin/customers/${text(selected.id)}`, {
@@ -185,11 +185,11 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   }
 
   async function deleteReservation(reservation: Row) {
-    if (text(reservation.payment_status) === "paid") {
-      notify("No se puede borrar una reserva pagada desde CRM. Cambia su estado primero si aplica un reembolso/cancelación.");
-      return;
-    }
-    if (!window.confirm(`¿Eliminar esta reserva de ${text(reservation.title)} y liberar cupos?`)) return;
+    const paid = text(reservation.payment_status) === "paid";
+    const paidWarning = paid
+      ? "\n\nEsta reserva aparece como pagada. Esta acción NO hace reembolso ni mueve dinero en Clip; solo la elimina del CRM/calendario y libera sus cupos."
+      : "";
+    if (!window.confirm(`¿Eliminar solo esta reserva de ${text(reservation.title)} para ${text(selected?.name)}?${paidWarning}`)) return;
 
     try {
       const res = await fetch(`/api/admin/reservations/${text(reservation.id)}`, {
@@ -434,11 +434,9 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                       {r.referral_source && <p><strong>Origen:</strong> {text(r.referral_source)}</p>}
                     </div>
                   )}
-                  {text(r.payment_status) !== "paid" && (
-                    <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
-                      Eliminar reserva y liberar cupos
-                    </button>
-                  )}
+                  <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
+                    Eliminar solo esta reserva y liberar cupos
+                  </button>
                 </div>
               ))}
             </div>
