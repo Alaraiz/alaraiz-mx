@@ -1675,7 +1675,20 @@ footer a:focus-visible {
 .lc-collection { font-family: var(--font-mono); font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase; display: flex; gap: .4rem; align-items: center; color: var(--ink-faint); }
 .lc-name { font-family: var(--font-display); font-size: clamp(1.1rem, 1.8vw, 1.4rem); font-weight: 500; line-height: 1.05; }
 .lc-role { font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
-.lc-bio { font-size: 0.82rem; color: var(--ink-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lc-bio {
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  line-height: 1.4;
+  max-height: calc(0.82rem * 1.4 * 2);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.lc-bio::-webkit-scrollbar { width: 4px; }
+.lc-bio::-webkit-scrollbar-track { background: transparent; }
+.lc-bio::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; }
 .lc-reclaims { margin-top: auto; padding-top: .4rem; border-top: 1px solid var(--rule-soft); }
 .lc-reclaims .rk { font-family: var(--font-mono); font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
 .lc-reclaims .rv { font-family: var(--font-display); font-style: italic; font-size: 0.9rem; color: var(--ink); margin-top: .1rem; }
@@ -2240,7 +2253,7 @@ footer {
   .date-chip { font-size: 0.4rem; }
   .date-list { gap: .14rem; }
   .lc-body { padding: 8px; }
-  .lc-bio { -webkit-line-clamp: 1; font-size: 0.76rem; }
+  .lc-bio { font-size: 0.76rem; max-height: calc(0.76rem * 1.4 * 2); }
   .reveal-overlay { padding: clamp(16px, 4vw, 32px); }
   .reveal-overlay h1 { font-size: clamp(2rem, 7vw, 2.8rem); }
   .hero-dek { font-size: 0.82rem; }
