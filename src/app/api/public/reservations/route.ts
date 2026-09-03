@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 import { getGateway } from "@/lib/payments";
-import { confirmPaidReservation, releaseReservationCapacity, toPositiveInteger } from "@/lib/reservations";
+import {
+  confirmPaidReservation,
+  releaseReservationCapacity,
+  sendReservationConfirmationEmail,
+  toPositiveInteger,
+} from "@/lib/reservations";
 import { ClipPaymentError } from "@/lib/payments/adapters/clip";
 import { calculateDiscount, registerDiscountUse } from "@/lib/discounts";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
@@ -218,6 +223,7 @@ export async function POST(request: NextRequest) {
         args: [customerId],
       });
       await registerDiscountUse(discount.code);
+      await sendReservationConfirmationEmail(reservationId);
       heldAvailabilityId = null;
       return NextResponse.json({
         checkoutUrl: `${baseUrlFromRequest(request)}/confirmacion?ref=${reservationId}`,

@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { sendEmail, tplReservationConfirmed } from "./email";
 
 export type ReservationConfirmation =
   | {
@@ -25,11 +26,12 @@ export async function getReservationByPaymentReference(reference: string) {
   const result = await db.execute({
     sql: `SELECT r.id, r.status, r.payment_status, r.payment_method, r.customer_id,
                  r.experience_id, r.availability_id, r.attendees_count, r.amount,
-                 r.subtotal_amount, r.discount_code, r.discount_amount, r.capacity_held,
-                 c.name, c.email, e.title
+                 r.subtotal_amount, r.discount_code, r.discount_amount, r.payment_reference, r.capacity_held,
+                 c.name, c.email, e.title, a.date, a.time
           FROM reservations r
           LEFT JOIN customers c ON c.id = r.customer_id
           LEFT JOIN experiences e ON e.id = r.experience_id
+          LEFT JOIN availability a ON a.id = r.availability_id
           WHERE r.payment_reference = ? OR r.id = ?
           LIMIT 1`,
     args: [reference, reference],
@@ -48,10 +50,39 @@ export function serializeReservation(row: Record<string, unknown>) {
     subtotalAmount: row.subtotal_amount,
     discountCode: row.discount_code,
     discountAmount: row.discount_amount,
+    paymentReference: row.payment_reference,
     amount: row.amount,
     status: row.status,
     paymentStatus: row.payment_status,
   };
+}
+
+export async function sendReservationConfirmationEmail(referenceOrReservationId: string) {
+  const reservation = await getReservationByPaymentReference(referenceOrReservationId);
+
+  if (!reservation?.email) {
+    return { ok: false, skipped: true, error: "Reserva sin correo de cliente." };
+  }
+
+  const tpl = tplReservationConfirmed({
+    reservationId: String(reservation.id),
+    paymentReference: String(reservation.payment_reference || ""),
+    customerName: String(reservation.name || "amiga/o"),
+    experienceTitle: String(reservation.title || "Tu experiencia"),
+    date: reservation.date ? String(reservation.date) : null,
+    time: reservation.time ? String(reservation.time) : null,
+    attendeesCount: toPositiveInteger(reservation.attendees_count, 1),
+    amount: Number(reservation.amount) || 0,
+    subtotalAmount: Number(reservation.subtotal_amount) || 0,
+    discountAmount: Number(reservation.discount_amount) || 0,
+    discountCode: reservation.discount_code ? String(reservation.discount_code) : null,
+  });
+
+  return sendEmail({
+    to: String(reservation.email),
+    subject: tpl.subject,
+    html: tpl.html,
+  });
 }
 
 export async function markPaymentFailed(reference: string) {
@@ -180,6 +211,8 @@ export async function confirmPaidReservation(
     sql: `UPDATE customers SET stage = 'confirmado', updated_at = datetime('now') WHERE id = ?`,
     args: [reservation.customer_id],
   });
+
+  await sendReservationConfirmationEmail(String(reservation.payment_reference || reservation.id));
 
   return {
     ok: true,
