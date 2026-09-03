@@ -1,7 +1,6 @@
 import { db } from "./db";
 import {
-  createReservationTicket,
-  createTicketFilename,
+  getReservationEntryAttachments,
   sendEmail,
   tplReservationConfirmed,
 } from "./email";
@@ -89,27 +88,7 @@ export async function sendReservationConfirmationEmail(referenceOrReservationId:
     to: String(reservation.email),
     subject: tpl.subject,
     html: tpl.html,
-    attachments: [
-      {
-        filename: createTicketFilename(String(reservation.title || "recreo")),
-        content: createReservationTicket({
-          reservationId: String(reservation.id),
-          paymentReference: String(reservation.payment_reference || ""),
-          customerName: String(reservation.name || "amiga/o"),
-          experienceTitle: String(reservation.title || "Tu experiencia"),
-          date: reservation.date ? String(reservation.date) : null,
-          time: reservation.time ? String(reservation.time) : null,
-          attendeesCount: toPositiveInteger(reservation.attendees_count, 1),
-          amount: Number(reservation.amount) || 0,
-          discountAmount: Number(reservation.discount_amount) || 0,
-          discountCode: reservation.discount_code ? String(reservation.discount_code) : null,
-          duration: reservation.duration ? String(reservation.duration) : null,
-          meetingPoint: reservation.email_meeting_point ? String(reservation.email_meeting_point) : null,
-          whatToExpect: reservation.email_what_to_expect ? String(reservation.email_what_to_expect) : null,
-        }),
-        contentType: "text/plain; charset=utf-8",
-      },
-    ],
+    attachments: await getReservationEntryAttachments(),
   });
 }
 

@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { Resend } from "resend";
 import { siteUrl } from "@/lib/site";
 
@@ -11,6 +13,7 @@ type SendArgs = {
     filename: string;
     content: string;
     contentType?: string;
+    encoding?: "utf8" | "base64";
   }>;
 };
 
@@ -46,7 +49,10 @@ export async function sendEmail({ to, subject, html, attachments }: SendArgs): P
       html,
       attachments: attachments?.map((attachment) => ({
         filename: attachment.filename,
-        content: Buffer.from(attachment.content).toString("base64"),
+        content:
+          attachment.encoding === "base64"
+            ? attachment.content
+            : Buffer.from(attachment.content).toString("base64"),
         contentType: attachment.contentType,
       })),
     });
@@ -133,29 +139,33 @@ function textToHtml(value: string) {
   return escapeHtml(value).replace(/\n/g, "<br/>");
 }
 
-export function createReservationTicket(data: ReservationEmailData) {
-  return [
-    "re·creo by raíz · Ciudad de México",
-    "",
-    `Entrada para: ${data.experienceTitle}`,
-    `Nombre: ${data.customerName}`,
-    `Fecha: ${formatExperienceDate(data.date)}`,
-    `Hora: ${formatExperienceTime(data.time)}`,
-    `Punto de encuentro: ${data.meetingPoint || "Por confirmar"}`,
-    `Referencia: ${data.paymentReference || data.reservationId}`,
-    `Personas: ${data.attendeesCount}`,
-    `Total: ${formatMoney(data.amount)}`,
-  ].join("\n");
-}
+export async function getReservationEntryAttachments() {
+  const files = [
+    {
+      source: path.join(process.cwd(), "public", "email-assets", "entrada-recreo-es.jpeg"),
+      filename: "entrada-recreo-es.jpeg",
+      contentType: "image/jpeg",
+    },
+    {
+      source: path.join(process.cwd(), "public", "email-assets", "entrada-recreo-en.jpeg"),
+      filename: "entrada-recreo-en.jpeg",
+      contentType: "image/jpeg",
+    },
+  ];
 
-export function createTicketFilename(title: string) {
-  const slug = title
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `entrada-${slug || "recreo"}.txt`;
+  try {
+    return await Promise.all(
+      files.map(async (file) => ({
+        filename: file.filename,
+        content: await readFile(file.source, { encoding: "base64" }),
+        contentType: file.contentType,
+        encoding: "base64" as const,
+      }))
+    );
+  } catch (error) {
+    console.error("[email] no se pudieron cargar las entradas adjuntas:", error);
+    return [];
+  }
 }
 
 export function tplReservationConfirmed(data: ReservationEmailData): { subject: string; html: string } {
