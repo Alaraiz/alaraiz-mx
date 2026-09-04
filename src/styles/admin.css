@@ -1213,6 +1213,12 @@
   text-decoration: underline;
 }
 
+.admin-link-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+  text-decoration: none;
+}
+
 .admin-slot-contact-name {
   color: var(--admin-text);
   font-weight: 600;
@@ -1312,6 +1318,13 @@
   flex-wrap: wrap;
   font-size: 0.78rem;
   gap: 0.5rem;
+}
+
+.admin-reservation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
 }
 
 .admin-metric-grid {

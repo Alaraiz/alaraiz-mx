@@ -43,6 +43,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const sourceOptions = useMemo(() => {
     const values = new Set(data.customers.map((customer) => text(customer.source)).filter(Boolean));
@@ -201,6 +202,31 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       refresh();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Error al borrar reserva.");
+    }
+  }
+
+  async function sendConfirmationEmail(reservation: Row) {
+    const reservationId = text(reservation.id);
+    const customerEmail = text(reservation.email || selected?.email);
+    if (!reservationId) return;
+    if (!customerEmail) {
+      notify("Esta reserva no tiene correo de cliente.");
+      return;
+    }
+    if (!window.confirm(`¿Enviar correo de confirmación a ${customerEmail}?`)) return;
+
+    setSendingEmailId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/confirmation-email`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar el correo.");
+      notify(`Correo de confirmación enviado a ${customerEmail}.`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo enviar el correo.");
+    } finally {
+      setSendingEmailId(null);
     }
   }
 
@@ -434,9 +460,19 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                       {r.referral_source && <p><strong>Origen:</strong> {text(r.referral_source)}</p>}
                     </div>
                   )}
-                  <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
-                    Eliminar solo esta reserva y liberar cupos
-                  </button>
+                  <div className="admin-reservation-actions">
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      disabled={sendingEmailId === text(r.id)}
+                      onClick={() => sendConfirmationEmail(r)}
+                    >
+                      {sendingEmailId === text(r.id) ? "Enviando correo..." : "Enviar correo de confirmación"}
+                    </button>
+                    <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
+                      Eliminar solo esta reserva y liberar cupos
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

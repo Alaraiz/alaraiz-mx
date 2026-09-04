@@ -426,6 +426,7 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [moveTargetId, setMoveTargetId] = useState("");
   const [movingReservations, setMovingReservations] = useState(false);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -573,6 +574,31 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
       refresh();
     } catch (err) {
       notify(err instanceof Error ? err.message : "No se pudo eliminar la reserva.");
+    }
+  }
+
+  async function sendConfirmationEmail(reservation: Row) {
+    const reservationId = String(reservation.id || "");
+    const customerEmail = String(reservation.email || "");
+    if (!reservationId) return;
+    if (!customerEmail) {
+      notify("Esta reserva no tiene correo de cliente.");
+      return;
+    }
+    if (!window.confirm(`¿Enviar correo de confirmación a ${customerEmail}?`)) return;
+
+    setSendingEmailId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/confirmation-email`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar el correo.");
+      notify(`Correo de confirmación enviado a ${customerEmail}.`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo enviar el correo.");
+    } finally {
+      setSendingEmailId(null);
     }
   }
 
@@ -868,6 +894,16 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                             <button
                               type="button"
                               className="admin-link-button"
+                              disabled={sendingEmailId === String(r.id)}
+                              onClick={() => sendConfirmationEmail(r)}
+                              title={`Enviar correo de confirmación a ${String(r.email || "esta persona")}`}
+                            >
+                              {sendingEmailId === String(r.id) ? "Enviando..." : "Enviar correo"}
+                            </button>
+                            <span>·</span>
+                            <button
+                              type="button"
+                              className="admin-link-button"
                               onClick={() => deleteReservation(r)}
                               title={`Quitar solo a ${String(r.name || "esta persona")} de esta fecha`}
                             >
@@ -959,9 +995,19 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                         {reservation.referral_source && <p><strong>Origen:</strong> {String(reservation.referral_source)}</p>}
                       </div>
                     )}
-                    <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
-                      Quitar esta reserva y liberar cupos
-                    </button>
+                    <div className="admin-reservation-actions">
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={sendingEmailId === String(reservation.id)}
+                        onClick={() => sendConfirmationEmail(reservation)}
+                      >
+                        {sendingEmailId === String(reservation.id) ? "Enviando correo..." : "Enviar correo de confirmación"}
+                      </button>
+                      <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
+                        Quitar esta reserva y liberar cupos
+                      </button>
+                    </div>
                   </article>
                 ))
               )}
