@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent, useMemo, useState } from "react";
+import { getMexicoDateKey } from "@/lib/mexico-time";
 
 type Row = Record<string, string | number | null>;
 type Props = {
@@ -44,6 +45,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [sendingSurveyId, setSendingSurveyId] = useState<string | null>(null);
 
   const sourceOptions = useMemo(() => {
     const values = new Set(data.customers.map((customer) => text(customer.source)).filter(Boolean));
@@ -227,6 +229,31 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       notify(err instanceof Error ? err.message : "No se pudo enviar el correo.");
     } finally {
       setSendingEmailId(null);
+    }
+  }
+
+  async function sendExitSurvey(reservation: Row) {
+    const reservationId = text(reservation.id);
+    const customerEmail = text(reservation.email || selected?.email);
+    if (!reservationId) return;
+    if (!customerEmail) {
+      notify("Esta reserva no tiene correo de cliente.");
+      return;
+    }
+    if (!window.confirm(`¿Enviar encuesta de salida a ${customerEmail}?`)) return;
+
+    setSendingSurveyId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/exit-survey-email`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar el cuestionario.");
+      notify(`Cuestionario enviado a ${customerEmail}.`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo enviar el cuestionario.");
+    } finally {
+      setSendingSurveyId(null);
     }
   }
 
@@ -469,6 +496,15 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                     >
                       {sendingEmailId === text(r.id) ? "Enviando correo..." : "Enviar correo de confirmación"}
                     </button>
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      disabled={sendingSurveyId === text(r.id) || !isPastDate(text(r.date))}
+                      onClick={() => sendExitSurvey(r)}
+                      title={!isPastDate(text(r.date)) ? "Disponible después de la salida" : "Enviar encuesta de salida"}
+                    >
+                      {sendingSurveyId === text(r.id) ? "Enviando encuesta..." : "Enviar encuesta de salida"}
+                    </button>
                     <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
                       Eliminar solo esta reserva y liberar cupos
                     </button>
@@ -554,4 +590,9 @@ function submissionTypeLabel(value: unknown) {
   if (type === "host_application") return "Propuesta de anfitrión";
   if (type === "landing_lead") return "Solicitud desde landing";
   return type || "Formulario";
+}
+
+function isPastDate(date: string) {
+  if (!date) return false;
+  return date < getMexicoDateKey();
 }

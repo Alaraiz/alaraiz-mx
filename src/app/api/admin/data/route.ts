@@ -48,9 +48,10 @@ export async function GET() {
     let folders = { rows: [] as unknown[] };
     let submissions = { rows: [] as unknown[] };
     let discounts = { rows: [] as unknown[] };
+    let emailTemplates = { rows: [] as unknown[] };
 
     if (isAdmin) {
-      [customers, reservations, events, folders, submissions, discounts] = await Promise.all([
+      [customers, reservations, events, folders, submissions, discounts, emailTemplates] = await Promise.all([
         db.execute("SELECT * FROM customers ORDER BY updated_at DESC"),
         db.execute(
           `SELECT r.*, c.name, c.email, c.phone, e.title, a.date, a.time
@@ -72,6 +73,9 @@ export async function GET() {
           `SELECT id, code, label, discount_type, value, is_active, max_uses, used_count, starts_at, expires_at, created_at, updated_at
            FROM discount_codes
            ORDER BY created_at DESC`
+        ),
+        db.execute(
+          "SELECT key, label, subject, title, body, cta_label, footer, updated_at FROM email_templates ORDER BY label ASC"
         ),
       ]);
     } else if (facilitatorId) {
@@ -109,6 +113,7 @@ export async function GET() {
       facilitators: facilitators.rows,
       collections: collections.rows,
       discounts: discounts.rows,
+      emailTemplates: emailTemplates.rows,
       currentRole: user.role,
       currentFacilitatorId: facilitatorId || null,
     });

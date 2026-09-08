@@ -1213,6 +1213,10 @@
   text-decoration: underline;
 }
 
+.admin-link-button--neutral {
+  color: var(--admin-accent);
+}
+
 .admin-link-button:disabled {
   cursor: wait;
   opacity: 0.55;
@@ -1411,6 +1415,37 @@
 .admin-discount-row strong,
 .admin-discount-row span {
   display: block;
+}
+
+.admin-email-template-editor {
+  max-width: 880px;
+}
+
+.admin-email-template-editor .admin-panel-head {
+  margin-bottom: 0.25rem;
+}
+
+.admin-template-vars {
+  background: color-mix(in srgb, var(--admin-surface-2) 72%, transparent);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 0.8rem;
+}
+
+.admin-template-vars > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.admin-template-vars span {
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  color: var(--admin-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.55rem;
 }
 
 .admin-error-text,

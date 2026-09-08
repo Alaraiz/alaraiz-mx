@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { DEFAULT_EMAIL_TEMPLATES } from "./email-template-defaults";
 
 /**
  * Database schema for Raíz CMS.
@@ -154,6 +155,18 @@ export async function migrate() {
       UNIQUE(page_key, section_key, field_key, locale)
     )`,
 
+    // Editable transactional email copy
+    `CREATE TABLE IF NOT EXISTS email_templates (
+      key TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      cta_label TEXT,
+      footer TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+
     // Public form submissions connected to CRM
     `CREATE TABLE IF NOT EXISTS form_submissions (
       id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
@@ -241,4 +254,21 @@ export async function migrate() {
     "CREATE INDEX IF NOT EXISTS idx_content_blocks_page ON content_blocks(page_key)",
     "CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON discount_codes(code)",
   ]);
+
+  await db.batch(
+    Object.values(DEFAULT_EMAIL_TEMPLATES).map((template) => ({
+      sql: `INSERT INTO email_templates (key, label, subject, title, body, cta_label, footer)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(key) DO NOTHING`,
+      args: [
+        template.key,
+        template.label,
+        template.subject,
+        template.title,
+        template.body,
+        template.cta_label,
+        template.footer,
+      ],
+    }))
+  );
 }

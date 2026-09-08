@@ -6,6 +6,7 @@ import CrmManager from "./crm-manager";
 import UserManager from "./user-manager";
 import CollectionManager from "./collection-manager";
 import ContentManager from "./content-manager";
+import EmailTemplateManager from "./email-template-manager";
 import { getMexicoDateKey, getMexicoHour } from "@/lib/mexico-time";
 
 type Row = Record<string, string | number | null>;
@@ -20,6 +21,7 @@ type Data = {
   facilitators: Row[];
   collections: Row[];
   discounts: Row[];
+  emailTemplates: Row[];
   currentRole?: string;
   currentFacilitatorId?: string | null;
 };
@@ -33,12 +35,13 @@ const allTabs = [
   ["calendar", "Calendario"],
   ["collections", "Colecciones"],
   ["content", "Contenido"],
+  ["emails", "Correos"],
   ["crm", "CRM"],
   ["payments", "Pagos"],
   ["settings", "Configuración"],
 ];
 
-const adminOnlyTabs = new Set(["collections", "content", "crm", "payments"]);
+const adminOnlyTabs = new Set(["collections", "content", "emails", "crm", "payments"]);
 
 async function readJson<T>(response: Response, fallbackMessage: string): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
@@ -74,6 +77,7 @@ export default function AdminDashboard() {
     facilitators: [],
     collections: [],
     discounts: [],
+    emailTemplates: [],
     currentRole: "editor",
     currentFacilitatorId: null,
   });
@@ -162,7 +166,7 @@ export default function AdminDashboard() {
               onClick={() => setTab(item[0])}
               key={item[0]}
             >
-              <span>{({ overview: "◌", experiences: "✦", facilitators: "☉", calendar: "▦", collections: "◫", content: "✎", crm: "♧", payments: "↗", settings: "⚙" } as Record<string, string>)[item[0]] || "·"}</span>
+              <span>{({ overview: "◌", experiences: "✦", facilitators: "☉", calendar: "▦", collections: "◫", content: "✎", emails: "✉", crm: "♧", payments: "↗", settings: "⚙" } as Record<string, string>)[item[0]] || "·"}</span>
               {item[1]}
             </button>
           ))}
@@ -203,6 +207,9 @@ export default function AdminDashboard() {
             {tab === "calendar" && <Calendar data={data} role={role} refresh={refresh} notify={notify} />}
             {tab === "collections" && <CollectionManager notify={notify} />}
             {tab === "content" && <ContentManager notify={notify} />}
+            {tab === "emails" && (
+              <EmailTemplateManager templates={data.emailTemplates} refresh={refresh} notify={notify} />
+            )}
             {tab === "crm" && (
               <CrmManager data={data} refresh={refresh} notify={notify} />
             )}
@@ -427,6 +434,7 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
   const [moveTargetId, setMoveTargetId] = useState("");
   const [movingReservations, setMovingReservations] = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [sendingSurveyId, setSendingSurveyId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -599,6 +607,31 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
       notify(err instanceof Error ? err.message : "No se pudo enviar el correo.");
     } finally {
       setSendingEmailId(null);
+    }
+  }
+
+  async function sendExitSurvey(reservation: Row) {
+    const reservationId = String(reservation.id || "");
+    const customerEmail = String(reservation.email || "");
+    if (!reservationId) return;
+    if (!customerEmail) {
+      notify("Esta reserva no tiene correo de cliente.");
+      return;
+    }
+    if (!window.confirm(`¿Enviar encuesta de salida a ${customerEmail}?`)) return;
+
+    setSendingSurveyId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/exit-survey-email`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo enviar el cuestionario.");
+      notify(`Cuestionario enviado a ${customerEmail}.`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo enviar el cuestionario.");
+    } finally {
+      setSendingSurveyId(null);
     }
   }
 
@@ -903,6 +936,20 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                             <span>·</span>
                             <button
                               type="button"
+                              className="admin-link-button admin-link-button--neutral"
+                              disabled={sendingSurveyId === String(r.id) || String(slot.date) >= today}
+                              onClick={() => sendExitSurvey(r)}
+                              title={
+                                String(slot.date) >= today
+                                  ? "La encuesta se envía después de la salida"
+                                  : `Enviar cuestionario a ${String(r.email || "esta persona")}`
+                              }
+                            >
+                              {sendingSurveyId === String(r.id) ? "Enviando..." : "Enviar encuesta"}
+                            </button>
+                            <span>·</span>
+                            <button
+                              type="button"
                               className="admin-link-button"
                               onClick={() => deleteReservation(r)}
                               title={`Quitar solo a ${String(r.name || "esta persona")} de esta fecha`}
@@ -1003,6 +1050,15 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                         onClick={() => sendConfirmationEmail(reservation)}
                       >
                         {sendingEmailId === String(reservation.id) ? "Enviando correo..." : "Enviar correo de confirmación"}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={sendingSurveyId === String(reservation.id) || String(selectedSlot.date) >= today}
+                        onClick={() => sendExitSurvey(reservation)}
+                        title={String(selectedSlot.date) >= today ? "Disponible después de la salida" : "Enviar encuesta de salida"}
+                      >
+                        {sendingSurveyId === String(reservation.id) ? "Enviando encuesta..." : "Enviar encuesta de salida"}
                       </button>
                       <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
                         Quitar esta reserva y liberar cupos

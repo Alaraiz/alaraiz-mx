@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureMigrated } from "@/lib/db";
 import { clientIp, hasSpamTrap, isValidEmail, rateLimit } from "@/lib/public-forms";
+import { getReservationByPaymentReference } from "@/lib/reservations";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     if (hasSpamTrap(body)) return NextResponse.json({ ok: true });
 
-    const name = String(body.name || "").trim();
-    const email = String(body.email || "").trim().toLowerCase();
+    const reservationId = String(body.reservationId || "").trim();
+    const reservation = reservationId ? await getReservationByPaymentReference(reservationId) : null;
+    if (reservationId && !reservation) {
+      return NextResponse.json({ error: "Reserva no encontrada." }, { status: 404 });
+    }
+
+    const name = String(reservation?.name || body.name || "").trim();
+    const email = String(reservation?.email || body.email || "").trim().toLowerCase();
     const payload = {
-      experienceTitle: String(body.experienceTitle || "").trim(),
+      reservationId: String(reservation?.id || reservationId || ""),
+      experienceTitle: String(reservation?.title || body.experienceTitle || "").trim(),
+      experienceDate: String(reservation?.date || "").trim(),
+      experienceTime: String(reservation?.time || "").trim(),
       rating: String(body.rating || "").trim(),
       nps: String(body.nps || "").trim(),
       highlight: String(body.highlight || "").trim(),
@@ -41,11 +51,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customerId = await upsertCustomer(name, email);
+    const customerId = reservation?.customer_id ? String(reservation.customer_id) : await upsertCustomer(name, email);
     const submission = await db.execute({
-      sql: `INSERT INTO form_submissions (type, customer_id, payload_json)
-            VALUES ('exit_survey', ?, ?) RETURNING id`,
-      args: [customerId, JSON.stringify(payload)],
+      sql: `INSERT INTO form_submissions (type, customer_id, reservation_id, experience_id, payload_json)
+            VALUES ('exit_survey', ?, ?, ?, ?) RETURNING id`,
+      args: [
+        customerId,
+        reservation?.id ? String(reservation.id) : null,
+        reservation?.experience_id ? String(reservation.experience_id) : null,
+        JSON.stringify(payload),
+      ],
     });
 
     await db.execute({

@@ -1,9 +1,12 @@
 import { db } from "./db";
 import {
+  getEmailTemplate,
   getReservationEntryAttachments,
   sendEmail,
+  tplExitSurvey,
   tplReservationConfirmed,
 } from "./email";
+import { getMexicoDateKey } from "./mexico-time";
 
 export type ReservationConfirmation =
   | {
@@ -68,6 +71,7 @@ export async function sendReservationConfirmationEmail(referenceOrReservationId:
     return { ok: false, skipped: true, error: "Reserva sin correo de cliente." };
   }
 
+  const template = await getEmailTemplate("reservation_confirmation");
   const tpl = tplReservationConfirmed({
     reservationId: String(reservation.id),
     paymentReference: String(reservation.payment_reference || ""),
@@ -82,13 +86,47 @@ export async function sendReservationConfirmationEmail(referenceOrReservationId:
     duration: reservation.duration ? String(reservation.duration) : null,
     meetingPoint: reservation.email_meeting_point ? String(reservation.email_meeting_point) : null,
     whatToExpect: reservation.email_what_to_expect ? String(reservation.email_what_to_expect) : null,
-  });
+  }, template);
 
   return sendEmail({
     to: String(reservation.email),
     subject: tpl.subject,
     html: tpl.html,
     attachments: await getReservationEntryAttachments(),
+  });
+}
+
+export async function sendExitSurveyEmail(referenceOrReservationId: string) {
+  const reservation = await getReservationByPaymentReference(referenceOrReservationId);
+
+  if (!reservation?.email) {
+    return { ok: false, skipped: true, error: "Reserva sin correo de cliente." };
+  }
+  if (!reservation.date || String(reservation.date) >= getMexicoDateKey()) {
+    return { ok: false, error: "El cuestionario se puede enviar después de que pase la fecha de la experiencia." };
+  }
+
+  const template = await getEmailTemplate("exit_survey");
+  const tpl = tplExitSurvey({
+    reservationId: String(reservation.id),
+    paymentReference: String(reservation.payment_reference || ""),
+    customerName: String(reservation.name || "amiga/o"),
+    experienceTitle: String(reservation.title || "Tu experiencia"),
+    date: reservation.date ? String(reservation.date) : null,
+    time: reservation.time ? String(reservation.time) : null,
+    attendeesCount: toPositiveInteger(reservation.attendees_count, 1),
+    amount: Number(reservation.amount) || 0,
+    discountAmount: Number(reservation.discount_amount) || 0,
+    discountCode: reservation.discount_code ? String(reservation.discount_code) : null,
+    duration: reservation.duration ? String(reservation.duration) : null,
+    meetingPoint: reservation.email_meeting_point ? String(reservation.email_meeting_point) : null,
+    whatToExpect: reservation.email_what_to_expect ? String(reservation.email_what_to_expect) : null,
+  }, template);
+
+  return sendEmail({
+    to: String(reservation.email),
+    subject: tpl.subject,
+    html: tpl.html,
   });
 }
 

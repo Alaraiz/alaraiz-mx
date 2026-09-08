@@ -1,6 +1,12 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { Resend } from "resend";
+import { db } from "@/lib/db";
+import {
+  DEFAULT_EMAIL_TEMPLATES,
+  type EmailTemplateDefault,
+  type EmailTemplateKey,
+} from "@/lib/email-template-defaults";
 import { siteUrl } from "@/lib/site";
 
 const FROM = process.env.EMAIL_FROM || "Raíz <onboarding@resend.dev>";
@@ -32,6 +38,10 @@ export type ReservationEmailData = {
   meetingPoint?: string | null;
   whatToExpect?: string | null;
 };
+
+type EmailTemplate = EmailTemplateDefault;
+
+type TemplateVars = Record<string, string | number | null | undefined>;
 
 export async function sendEmail({ to, subject, html, attachments }: SendArgs): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
@@ -69,12 +79,14 @@ export async function sendEmail({ to, subject, html, attachments }: SendArgs): P
   }
 }
 
-function layout(title: string, bodyHtml: string, ctaLabel?: string, ctaUrl?: string): string {
+function layout(title: string, bodyHtml: string, ctaLabel?: string, ctaUrl?: string, footer?: string): string {
   const cta = ctaLabel && ctaUrl
     ? `<tr><td style="padding:28px 0 6px;text-align:center">
          <a href="${ctaUrl}" style="display:inline-block;background:#1c6b57;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 30px;border-radius:999px">${ctaLabel}</a>
        </td></tr>`
     : "";
+
+  const footerHtml = footer ? textToHtml(footer) : "Raíz · La ciudad debajo de la ciudad<br/>Ciudad de México · Este correo se generó automáticamente para tu reserva.";
 
   return `<!doctype html>
 <html lang="es"><body style="margin:0;padding:0;background:#f4efe7">
@@ -93,20 +105,12 @@ function layout(title: string, bodyHtml: string, ctaLabel?: string, ctaUrl?: str
     </table>
   </td></tr>
   <tr><td style="padding:22px 8px;text-align:center;color:#6f7b76;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6">
-    Raíz · La ciudad debajo de la ciudad<br/>
-    Ciudad de México · Este correo se generó automáticamente para tu reserva.
+    ${footerHtml}
   </td></tr>
 </table>
 </td></tr>
 </table>
 </body></html>`;
-}
-
-function fila(label: string, value: string) {
-  return `<tr>
-    <td style="color:#6f7b76;font-size:13px;padding:6px 14px 6px 0;white-space:nowrap">${label}</td>
-    <td style="color:#163229;font-size:13px;font-weight:600;padding:6px 0">${value}</td>
-  </tr>`;
 }
 
 function formatMoney(value: number) {
@@ -168,38 +172,81 @@ export async function getReservationEntryAttachments() {
   }
 }
 
-export function tplReservationConfirmed(data: ReservationEmailData): { subject: string; html: string } {
+export async function getEmailTemplate(key: EmailTemplateKey): Promise<EmailTemplate> {
+  try {
+    const result = await db.execute({
+      sql: "SELECT key, label, subject, title, body, cta_label, footer FROM email_templates WHERE key = ? LIMIT 1",
+      args: [key],
+    });
+    const row = result.rows[0];
+    if (!row) return DEFAULT_EMAIL_TEMPLATES[key];
+
+    return {
+      key,
+      label: String(row.label || DEFAULT_EMAIL_TEMPLATES[key].label),
+      subject: String(row.subject || DEFAULT_EMAIL_TEMPLATES[key].subject),
+      title: String(row.title || DEFAULT_EMAIL_TEMPLATES[key].title),
+      body: String(row.body || DEFAULT_EMAIL_TEMPLATES[key].body),
+      cta_label: String(row.cta_label || DEFAULT_EMAIL_TEMPLATES[key].cta_label),
+      footer: String(row.footer || DEFAULT_EMAIL_TEMPLATES[key].footer),
+    };
+  } catch (error) {
+    console.error(`[email] no se pudo leer la plantilla ${key}:`, error);
+    return DEFAULT_EMAIL_TEMPLATES[key];
+  }
+}
+
+function renderTemplate(value: string, vars: TemplateVars) {
+  return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) => {
+    const next = vars[key];
+    return next == null || next === "" ? match : String(next);
+  });
+}
+
+function templateVars(data: ReservationEmailData, links: { confirmationUrl?: string; surveyUrl?: string }): TemplateVars {
   return {
-    subject: `Tu llave a la ciudad oculta · Bienvenido a la raíz · ${data.experienceTitle}`,
+    nombre: data.customerName,
+    experiencia: data.experienceTitle,
+    fecha: formatExperienceDate(data.date),
+    hora: formatExperienceTime(data.time),
+    personas: data.attendeesCount,
+    total: formatMoney(data.amount),
+    descuento: data.discountAmount ? formatMoney(data.discountAmount) : "",
+    codigo_descuento: data.discountCode || "",
+    duracion: data.duration || "Por confirmar",
+    punto_encuentro: data.meetingPoint || "Por confirmar",
+    que_esperar: data.whatToExpect || "Pronto te compartiremos este detalle.",
+    link_confirmacion: links.confirmationUrl || "",
+    link_cuestionario: links.surveyUrl || "",
+  };
+}
+
+export function tplReservationConfirmed(data: ReservationEmailData, template = DEFAULT_EMAIL_TEMPLATES.reservation_confirmation): { subject: string; html: string } {
+  const confirmationUrl = `${siteUrl()}/confirmacion?ref=${encodeURIComponent(data.paymentReference || data.reservationId)}`;
+  const vars = templateVars(data, { confirmationUrl });
+  return {
+    subject: renderTemplate(template.subject, vars),
     html: layout(
-      "Tu llave a la ciudad oculta",
-      `<p style="margin:0 0 16px">¡Hola, ${escapeHtml(data.customerName)}!</p>
-       <p style="margin:0 0 16px">Ya está: tu lugar está confirmado y no lo suelta nadie.</p>
-       <p style="margin:0 0 16px">Somos pocos, ni uno más, y uno de esos lugares es tuyo. Así que sí: esta es tu llave a la ciudad oculta.</p>
-       <p style="margin:0 0 16px">Bienvenido a la raíz — nos dio muchísimo gusto ver tu nombre en la lista para <strong style="color:#163229">${escapeHtml(data.experienceTitle)}</strong>.</p>
-       <p style="margin:0 0 16px">Nos vemos pronto para recorrer esta historia desde adentro y compartir la ciudad como se vive de verdad.</p>
-       <p style="margin:0 0 12px">Aquí lo importante, para que no lo tengas que buscar:</p>
-       <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:0;background:#f7f3eb;border:1px solid rgba(22,50,41,.09);border-radius:12px;padding:14px 16px;width:100%">
-         ${fila("Punto de encuentro", escapeHtml(data.meetingPoint || "Por confirmar"))}
-         ${fila("Cuándo", formatExperienceDate(data.date))}
-         ${fila("Hora", formatExperienceTime(data.time))}
-         ${data.duration ? fila("Duración", escapeHtml(data.duration)) : ""}
-         ${fila("Qué esperar", textToHtml(data.whatToExpect || "Pronto te compartiremos este detalle."))}
-       </table>
-       <p style="margin:16px 0 10px">Te recomendamos traer:</p>
-       <ul style="margin:0 0 16px 18px;padding:0;color:#163229">
-         <li style="margin:0 0 8px">Zapatos cómodos</li>
-         <li style="margin:0 0 8px">Gorra y/o bloqueador solar</li>
-         <li style="margin:0 0 8px">Botella de agua reutilizable</li>
-         <li style="margin:0 0 8px">Paraguas / chamarra</li>
-       </ul>
-       <p style="margin:0 0 16px">Cómo llegar: te sugerimos transporte público o rideshare — podrían presentarse cierres vehiculares y el estacionamiento en la zona es limitado.</p>
-       <p style="margin:0 0 16px">Te va adjunta tu entrada. No hace falta imprimirla ni enseñarla en la puerta: es tuya, para presumirla si quieres y para que sepas que ya estás dentro. Si la compartes, etiquétanos: nos encanta ver quién viene.</p>
-       <p style="margin:0 0 16px">Y si la vida se atraviesa y no puedes venir, avísanos con tiempo (24hrs para rembolso) y le damos tu lugar a alguien más.</p>
-       <p style="margin:0 0 16px">Ya nos queremos ver,<br/><strong style="color:#163229">El equipo de re·creo</strong></p>
-       <p style="margin:0;color:#6f7b76;font-size:12px">re·creo by raíz · Ciudad de México<br/>alaraiz.mx · recreobyraiz@pm.me</p>`,
-      "Ver confirmación",
-      `${siteUrl()}/confirmacion?ref=${encodeURIComponent(data.paymentReference || data.reservationId)}`
+      renderTemplate(template.title, vars),
+      textToHtml(renderTemplate(template.body, vars)),
+      renderTemplate(template.cta_label, vars),
+      confirmationUrl,
+      renderTemplate(template.footer, vars)
+    ),
+  };
+}
+
+export function tplExitSurvey(data: ReservationEmailData, template = DEFAULT_EMAIL_TEMPLATES.exit_survey): { subject: string; html: string } {
+  const surveyUrl = `${siteUrl()}/encuesta-salida/${encodeURIComponent(data.reservationId)}`;
+  const vars = templateVars(data, { surveyUrl });
+  return {
+    subject: renderTemplate(template.subject, vars),
+    html: layout(
+      renderTemplate(template.title, vars),
+      textToHtml(renderTemplate(template.body, vars)),
+      renderTemplate(template.cta_label, vars),
+      surveyUrl,
+      renderTemplate(template.footer, vars)
     ),
   };
 }
