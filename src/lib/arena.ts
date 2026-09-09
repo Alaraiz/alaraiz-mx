@@ -3,6 +3,8 @@ const DETENTE_CHANNEL = process.env.ARENA_DETENTE_CHANNEL || "revista-detente";
 
 type ArenaContentResponse = {
   data?: ArenaBlock[];
+  contents?: ArenaBlock[];
+  blocks?: ArenaBlock[];
 };
 
 type ArenaBlock = {
@@ -67,7 +69,8 @@ export async function getDetenteIssues(): Promise<{
     }
 
     const data = (await response.json()) as ArenaContentResponse;
-    const issues = (data.data || [])
+    const blocks = data.data || data.contents || data.blocks || [];
+    const issues = blocks
       .map(toDetenteIssue)
       .filter((issue): issue is DetenteIssue => Boolean(issue?.pdfUrl));
 
