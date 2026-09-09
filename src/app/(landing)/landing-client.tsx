@@ -488,7 +488,7 @@ export default function LandingClient({
               <span className="lng-es">Especialistas</span>
               <span className="lng-en">Specialists</span>
             </a>
-            <a href="/detente/02" onClick={() => setMenuOpen(false)}>
+            <a href="/detente" onClick={() => setMenuOpen(false)}>
               Détente
             </a>
             <a href="#descubre" onClick={() => setMenuOpen(false)}>
@@ -862,7 +862,7 @@ export default function LandingClient({
             <div className="foot-bottom">
               <div className="foot-cols">
                 <div className="col"><span className="mono"><span className="lng-es">Navega</span><span className="lng-en">Navigate</span></span><a href="#recreo">Recreo</a><a href="#especialistas"><span className="lng-es">Acompañantes</span><span className="lng-en">Hosts</span></a><a href="#rsvp"><span className="lng-es">Reserva</span><span className="lng-en">Book</span></a></div>
-                <div className="col"><span className="mono">Esporas</span><a href="/detente/02">Détente · Nº 02</a><a href="/detente/01">Détente · Nº 01</a></div>
+                <div className="col"><span className="mono">Esporas</span><a href="/detente">Détente · Revista</a><a href="https://instagram.com/detentebyraiz" target="_blank" rel="noopener noreferrer">@detentebyraiz</a></div>
                 <div className="col"><span className="mono"><span className="lng-es">Contacto</span><span className="lng-en">Contact</span></span><a href="mailto:recreobyraiz@pm.me">recreobyraiz@pm.me</a><a href="mailto:alaraiz@pm.me">alaraiz@pm.me</a><a href="https://alaraiz.mx">alaraiz.mx</a></div>
                 <div className="col"><span className="mono"><span className="lng-es">Síguenos</span><span className="lng-en">Follow</span></span><a href="https://instagram.com/a.la.ra.iz" target="_blank" rel="noopener noreferrer">@a.la.ra.iz</a><a href="https://instagram.com/recreobyraiz" target="_blank" rel="noopener noreferrer">@recreobyraiz</a><a href="https://instagram.com/detentebyraiz" target="_blank" rel="noopener noreferrer">@detentebyraiz</a></div>
               </div>
@@ -1052,7 +1052,7 @@ function DiscoverPanel({ content }: { content: ContentMap }) {
                 <p><span className="lng-es">Sobre armar la banda, conocer a los tuyos y querer al desfavorito. Apoya a tu equipo, pierde con clase y ponte otra camiseta sin cambiar de alma.</span><span className="lng-en">On getting the band together, knowing your people, and rooting for the underdog. Back your team, lose with class, then put on another shirt without changing your soul.</span></p>
                 <div className="db-meta"><span><span className="lng-es">Bilingüe ES/EN</span><span className="lng-en">Bilingual ES/EN</span></span><span><span className="lng-es">Afición</span><span className="lng-en">Fandom</span></span><span><span className="lng-es">Temporada · 2026</span><span className="lng-en">In season · 2026</span></span></div>
                 <div style={{ display: "flex", gap: "1.2rem", alignItems: "center", flexWrap: "wrap" }}>
-                  <a href="/detente/02" className="db-cta"><span className="lng-es">Lee Détente Nº 02 →</span><span className="lng-en">Read Détente No. 02 →</span></a>
+                  <a href="/detente" className="db-cta"><span className="lng-es">Lee Détente →</span><span className="lng-en">Read Détente →</span></a>
                 </div>
               </div>
             </article>
@@ -1075,7 +1075,7 @@ function DiscoverPanel({ content }: { content: ContentMap }) {
                 <p><span className="lng-es">Una guía de campo para vivir la Copa 2026 sin perder la ciudad real: dónde comer, cómo moverse, qué no creer y a quién escuchar.</span><span className="lng-en">A field guide for living the 2026 World Cup without losing the real city: where to eat, how to move, what not to believe, and who to listen to.</span></p>
                 <div className="db-meta"><span><span className="lng-es">Bilingüe ES/EN</span><span className="lng-en">Bilingual ES/EN</span></span><span><span className="lng-es">Guía de campo</span><span className="lng-en">Field guide</span></span><span><span className="lng-es">Temporada · 2026</span><span className="lng-en">In season · 2026</span></span></div>
                 <div style={{ display: "flex", gap: "1.2rem", alignItems: "center", flexWrap: "wrap" }}>
-                  <a href="/detente/01" className="db-cta"><span className="lng-es">Lee Détente Nº 01 →</span><span className="lng-en">Read Détente No. 01 →</span></a>
+                  <a href="/detente" className="db-cta"><span className="lng-es">Lee Détente →</span><span className="lng-en">Read Détente →</span></a>
                 </div>
               </div>
             </article>

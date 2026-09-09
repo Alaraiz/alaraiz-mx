@@ -11,14 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/detente/01`,
-      lastModified: new Date("2026-01-15"),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/detente/02`,
-      lastModified: new Date("2026-03-01"),
+      url: `${baseUrl}/detente`,
+      lastModified: new Date("2026-09-08"),
       changeFrequency: "monthly",
       priority: 0.8,
     },

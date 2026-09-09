@@ -92,7 +92,7 @@ export default function RootLayout({
         "@type": "ListItem",
         position: 2,
         name: "Détente",
-        url: "https://alaraiz.mx/detente/02",
+        url: "https://alaraiz.mx/detente",
       },
       {
         "@type": "ListItem",
