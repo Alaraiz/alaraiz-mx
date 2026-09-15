@@ -425,6 +425,9 @@ export default function LandingClient({
       <section className="hero section-screen" id="top">
         {/* ── Top nav: lang toggle + hamburger ── */}
         <div className="top-nav" ref={navRef}>
+          <a className="calendar-nav-link" href="/calendario" aria-label={lang === "es" ? "Ver calendario de experiencias" : "View experience calendar"} title={lang === "es" ? "Calendario" : "Calendar"}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2" /></svg>
+          </a>
           <button
             className="lang-toggle"
             onClick={() => setLang(lang === "es" ? "en" : "es")}

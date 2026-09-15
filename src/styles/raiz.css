@@ -2630,3 +2630,9 @@ footer {
   background: var(--rule);
   border-radius: 999px;
 }
+
+.calendar-nav-link{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;color:var(--ink);border:1px solid var(--rule);border-radius:6px;text-decoration:none;background:var(--paper)}
+.calendar-nav-link:hover{border-color:var(--accent)}
+.calendar-nav-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+@media(max-width:360px){.top-nav{gap:.3rem}}

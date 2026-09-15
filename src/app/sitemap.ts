@@ -4,6 +4,7 @@ import { db, ensureMigrated } from "@/lib/db";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://alaraiz.mx";
   const staticRoutes: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/calendario`, changeFrequency: "daily", priority: 0.8 },
     {
       url: baseUrl,
       lastModified: new Date("2026-06-01"),
