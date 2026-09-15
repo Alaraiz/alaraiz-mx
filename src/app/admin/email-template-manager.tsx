@@ -65,7 +65,7 @@ export default function EmailTemplateManager({ templates, refresh, notify }: Pro
         <div>
           <p className="admin-kicker">Correos automatizados</p>
           <p className="admin-muted">
-            Edita el texto que reciben las personas al confirmar una reserva o al pedirles feedback.
+            Edita el texto que reciben las personas al confirmar una reserva, cambiar su fecha o pedirles feedback.
           </p>
         </div>
         <div className="admin-tabs" role="group" aria-label="Plantillas de correo">

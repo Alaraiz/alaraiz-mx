@@ -99,8 +99,8 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, []);
 
-  const refresh = async () => {
-    setLoading(true);
+  const refresh = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await fetchWithTimeout("/api/admin/data");
       const value = await readJson<Data & { error?: string }>(
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
         tone: "error",
       });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -425,7 +425,7 @@ function Overview({
   );
 }
 
-function Calendar({ data, role, refresh, notify }: { data: Data; role: string; refresh: () => void; notify: (s: string) => void }) {
+function Calendar({ data, role, refresh, notify }: { data: Data; role: string; refresh: (silent?: boolean) => Promise<void>; notify: (s: string) => void }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ experienceId: "", date: "", time: "10:00", capacity: "12" });
   const [saving, setSaving] = useState(false);
@@ -433,6 +433,49 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [moveTargetId, setMoveTargetId] = useState("");
   const [movingReservations, setMovingReservations] = useState(false);
+  const [notifyOnMove, setNotifyOnMove] = useState(true);
+  const [sendingRescheduleEmails, setSendingRescheduleEmails] = useState(false);
+  const [rescheduleCounts, setRescheduleCounts] = useState<Record<string, number> | null>(null);
+  const [rescheduleError, setRescheduleError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setRescheduleCounts(null);
+    setRescheduleError("");
+    if (!selectedSlotId) return;
+    fetch(`/api/admin/availability/${selectedSlotId}/reschedule-emails`)
+      .then(async res => {
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "No se pudieron consultar los avisos.");
+        if (!cancelled) { setRescheduleCounts(result.counts); setRescheduleError((result.errors || []).join(" ")); }
+      })
+      .catch(error => { if (!cancelled) setRescheduleError(error.message); });
+    return () => { cancelled = true; };
+  }, [selectedSlotId]);
+
+  async function refreshRescheduleStatus() {
+    if (!selectedSlotId) return;
+    try {
+      const res = await fetch(`/api/admin/availability/${selectedSlotId}/reschedule-emails`);
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "No se pudieron consultar los avisos.");
+      setRescheduleCounts(result.counts); setRescheduleError((result.errors || []).join(" "));
+    } catch (error) { setRescheduleError(error instanceof Error ? error.message : "Error al consultar avisos."); }
+  }
+
+  async function sendPendingRescheduleEmails() {
+    if (!selectedSlotId || !window.confirm("¿Enviar los avisos de cambio de fecha pendientes? Los ya enviados no se repetirán.")) return;
+    setSendingRescheduleEmails(true);
+    try {
+      const res = await fetch(`/api/admin/availability/${selectedSlotId}/reschedule-emails`, { method: "POST" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "No se pudo completar el envío.");
+      setRescheduleCounts(result.counts); setRescheduleError((result.errors || []).join(" "));
+      notify(`Avisos enviados: ${result.sent}. Fallidos en este intento: ${result.failed}.`);
+    } catch (error) {
+      setRescheduleError(error instanceof Error ? error.message : "Error de envío. Actualiza el estado antes de reintentar.");
+    } finally { setSendingRescheduleEmails(false); }
+  }
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [sendingSurveyId, setSendingSurveyId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -642,27 +685,29 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
       notify("Elige una fecha destino válida.");
       return;
     }
-    if (!window.confirm(`¿Mover todas las reservas de ${formatCalDate(String(selectedSlot.date))} a ${formatCalDate(String(target.date))}?`)) return;
+    if (!window.confirm(`¿Mover todas las reservas de ${formatCalDate(String(selectedSlot.date))} a ${formatCalDate(String(target.date))}? ${notifyOnMove ? "Se enviará un aviso de cambio de fecha." : "Los avisos quedarán pendientes para envío manual."}`)) return;
 
     setMovingReservations(true);
     try {
       const res = await fetch(`/api/admin/availability/${String(selectedSlot.id)}/move-reservations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetAvailabilityId: moveTargetId }),
+        body: JSON.stringify({ targetAvailabilityId: moveTargetId, notifyCustomers: notifyOnMove }),
       });
-      const result = await readJson<{ error?: string; moved?: number }>(
+      const result = await readJson<{ error?: string; moved?: number; queued?: number; notifications?: { sent: number; failed: number }; notificationError?: string }>(
         res,
         "El servidor respondió con un error inesperado al mover reservas."
       );
       if (!res.ok) throw new Error(result.error || "No se pudieron mover las reservas.");
 
-      notify(`Reservas movidas: ${result.moved || 0}.`);
+      notify(`Reservas movidas: ${result.moved || 0}. ${result.notificationError || (result.notifications
+        ? `Avisos enviados: ${result.notifications.sent}; fallidos: ${result.notifications.failed}. Revisa pendientes en la fecha destino.`
+        : `${result.queued || 0} avisos guardados para envío manual.`)}`);
       setSelectedSlotId(moveTargetId);
       setMoveTargetId("");
-      refresh();
+      await refresh(true);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "No se pudieron mover las reservas.");
+      notify(error instanceof Error ? `${error.message} Revisa la fecha destino antes de repetir el movimiento.` : "Revisa la fecha destino antes de repetir el movimiento.");
     } finally {
       setMovingReservations(false);
     }
@@ -996,8 +1041,15 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                 <p className="admin-kicker">Reagendar grupo</p>
                 <p className="admin-muted">Mueve todas las reservas de esta salida a otra fecha de la misma experiencia.</p>
               </div>
+              <label className="admin-reschedule-mode">
+                Aviso de cambio de fecha
+                <select value={notifyOnMove ? "automatic" : "manual"} onChange={event => setNotifyOnMove(event.target.value === "automatic")} disabled={movingReservations}>
+                  <option value="automatic">Automático: enviar al mover el grupo</option>
+                  <option value="manual">Manual: guardar avisos para enviarlos después</option>
+                </select>
+              </label>
               <div className="admin-reschedule-actions">
-                <select value={moveTargetId} onChange={(event) => setMoveTargetId(event.target.value)}>
+                <select aria-label="Nueva fecha del grupo" disabled={movingReservations} value={moveTargetId} onChange={(event) => setMoveTargetId(event.target.value)}>
                   <option value="">Nueva fecha...</option>
                   {moveTargets.map((slot) => (
                     <option key={String(slot.id)} value={String(slot.id)}>
@@ -1017,6 +1069,18 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
               {moveTargets.length === 0 && (
                 <p className="admin-muted">Primero crea otra fecha para esta experiencia.</p>
               )}
+            </div>
+            <div className="admin-reschedule-box" aria-live="polite">
+              <p className="admin-kicker">Avisos de cambio de fecha</p>
+              {rescheduleCounts && <p className="admin-muted">Enviados: {rescheduleCounts.sent || 0} · Pendientes: {rescheduleCounts.pending || 0} · Fallidos: {rescheduleCounts.failed || 0} · En proceso: {rescheduleCounts.sending || 0}</p>}
+              {rescheduleError && <p role="alert">{rescheduleError}</p>}
+              <p className="admin-muted">Se envían hasta 20 avisos por intento. Los ya enviados no se repiten. Si un envío se interrumpió, espera cinco minutos antes de reintentar.</p>
+              <div className="admin-reschedule-actions">
+                <button type="button" className="admin-primary admin-small" disabled={sendingRescheduleEmails || !rescheduleCounts || !(rescheduleCounts.pending + rescheduleCounts.failed + rescheduleCounts.sending)} onClick={sendPendingRescheduleEmails}>
+                  {sendingRescheduleEmails ? "Enviando avisos..." : "Enviar avisos pendientes"}
+                </button>
+                <button type="button" className="admin-btn admin-small" disabled={sendingRescheduleEmails} onClick={refreshRescheduleStatus}>Actualizar estado</button>
+              </div>
             </div>
             <div className="admin-log-section">
               <p className="admin-kicker">Personas reservadas ({selectedReservations.length})</p>

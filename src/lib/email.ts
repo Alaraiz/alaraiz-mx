@@ -12,6 +12,7 @@ import { siteUrl } from "@/lib/site";
 const FROM = process.env.EMAIL_FROM || "Raíz <onboarding@resend.dev>";
 
 type SendArgs = {
+  idempotencyKey?: string;
   to: string;
   subject: string;
   html: string;
@@ -43,7 +44,7 @@ type EmailTemplate = EmailTemplateDefault;
 
 type TemplateVars = Record<string, string | number | null | undefined>;
 
-export async function sendEmail({ to, subject, html, attachments }: SendArgs): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+export async function sendEmail({ to, subject, html, attachments, idempotencyKey }: SendArgs): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     console.log(`[email omitido - falta RESEND_API_KEY] para=${to} asunto="${subject}"`);
@@ -65,7 +66,7 @@ export async function sendEmail({ to, subject, html, attachments }: SendArgs): P
             : Buffer.from(attachment.content).toString("base64"),
         contentType: attachment.contentType,
       })),
-    });
+    }, idempotencyKey ? { idempotencyKey } : undefined);
 
     if (error) {
       console.error("[email] error de Resend:", error);
@@ -233,6 +234,22 @@ export function tplReservationConfirmed(data: ReservationEmailData, template = D
       confirmationUrl,
       renderTemplate(template.footer, vars)
     ),
+  };
+}
+
+export type RescheduleEmailData = ReservationEmailData & { previousDate: string; previousTime: string };
+
+export function tplReservationRescheduled(data: RescheduleEmailData, template = DEFAULT_EMAIL_TEMPLATES.reservation_rescheduled) {
+  const confirmationUrl = `${siteUrl()}/confirmacion?ref=${encodeURIComponent(data.paymentReference || data.reservationId)}`;
+  const vars = {
+    ...templateVars(data, { confirmationUrl }),
+    fecha_anterior: formatExperienceDate(data.previousDate),
+    hora_anterior: formatExperienceTime(data.previousTime),
+  };
+  return {
+    subject: renderTemplate(template.subject, vars),
+    html: layout(renderTemplate(template.title, vars), textToHtml(renderTemplate(template.body, vars)),
+      renderTemplate(template.cta_label, vars), confirmationUrl, renderTemplate(template.footer, vars)),
   };
 }
 

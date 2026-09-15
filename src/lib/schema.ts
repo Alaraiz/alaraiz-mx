@@ -178,6 +178,22 @@ export async function migrate() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`,
 
+    // Durable change-of-date notices. Snapshot preserves the actual before/after dates.
+    `CREATE TABLE IF NOT EXISTS reschedule_notifications (
+      id TEXT PRIMARY KEY,
+      reservation_id TEXT NOT NULL,
+      availability_id TEXT NOT NULL,
+      recipient TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      rendered_json TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      attempted_at TEXT,
+      sent_at TEXT
+    )`,
+
     // Discount codes for public checkout
     `CREATE TABLE IF NOT EXISTS discount_codes (
       id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
@@ -248,6 +264,7 @@ export async function migrate() {
   }
 
   await db.batch([
+    "CREATE INDEX IF NOT EXISTS idx_reschedule_availability ON reschedule_notifications(availability_id, status)",
     "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
     "CREATE INDEX IF NOT EXISTS idx_reservations_availability ON reservations(availability_id)",
     "CREATE INDEX IF NOT EXISTS idx_form_submissions_customer ON form_submissions(customer_id)",

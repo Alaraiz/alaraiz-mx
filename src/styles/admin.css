@@ -1954,3 +1954,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.admin-reschedule-mode{display:grid;gap:6px;margin:12px 0;font-size:.8rem}.admin-reschedule-mode select{width:100%;max-width:100%;min-width:0;padding:8px;background:var(--admin-bg);color:inherit;border:1px solid var(--admin-border);border-radius:6px}
+.admin-reschedule-box > *{min-width:0}
+.admin-reschedule-box > .admin-reschedule-actions{grid-column:1/-1}
+.admin-reschedule-box > [role="alert"]{grid-column:1/-1;color:var(--admin-text);font-size:.85rem;overflow-wrap:anywhere}
+@media(max-width:640px){.admin-reschedule-box{grid-template-columns:minmax(0,1fr)}.admin-reschedule-actions{flex-wrap:wrap}.admin-reschedule-actions select{max-width:100%;min-width:0;flex:1 1 100%}.admin-reschedule-mode{margin:0}}

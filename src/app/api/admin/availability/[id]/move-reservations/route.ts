@@ -1,90 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
-import { db, ensureMigrated } from "@/lib/db";
-import { userCanManageExperience } from "@/lib/admin-permissions";
+import { ensureMigrated } from "@/lib/db";
+import { moveReservationGroup, RescheduleError } from "@/lib/reschedule";
+import { sendRescheduleNotifications } from "@/lib/reschedule-notifications";
 
 export const dynamic = "force-dynamic";
-
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const maxDuration = 60;
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireRole(["admin", "editor"]);
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-    }
-
+    if (!user) return NextResponse.json({ error: "No autorizado." }, { status: 401 });
     await ensureMigrated();
-
     const body = await request.json();
-    const targetAvailabilityId = String(body.targetAvailabilityId || "");
-    if (!targetAvailabilityId || targetAvailabilityId === params.id) {
-      return NextResponse.json({ error: "Elige una nueva fecha distinta." }, { status: 400 });
+    const targetId = String(body.targetAvailabilityId || "");
+    const result = await moveReservationGroup(user, params.id, targetId);
+    // Email failure must never turn a committed move into an apparent failed move.
+    let notifications = null;
+    let notificationError: string | null = null;
+    if (body.notifyCustomers === true) {
+      try { notifications = await sendRescheduleNotifications(targetId, { ids: result.notificationIds }); }
+      catch (error) {
+        console.error("[reschedule notices]", error);
+        notificationError = "El grupo ya se movió. Revisa los avisos pendientes en la fecha destino.";
+      }
     }
-
-    const slots = await db.execute({
-      sql: `SELECT id, experience_id, booked, capacity, status
-            FROM availability
-            WHERE id IN (?, ?)`,
-      args: [params.id, targetAvailabilityId],
-    });
-    const source = slots.rows.find((slot) => String(slot.id) === params.id);
-    const target = slots.rows.find((slot) => String(slot.id) === targetAvailabilityId);
-
-    if (!source || !target) {
-      return NextResponse.json({ error: "Fecha origen o destino no encontrada." }, { status: 404 });
-    }
-    if (String(source.experience_id) !== String(target.experience_id)) {
-      return NextResponse.json({ error: "Solo puedes mover reservas entre fechas de la misma experiencia." }, { status: 409 });
-    }
-    if (String(target.status || "open") !== "open") {
-      return NextResponse.json({ error: "La fecha destino debe estar abierta." }, { status: 409 });
-    }
-    if (!(await userCanManageExperience(user, String(source.experience_id)))) {
-      return NextResponse.json({ error: "No autorizado para reagendar esta experiencia." }, { status: 403 });
-    }
-
-    const reservations = await db.execute({
-      sql: "SELECT id, attendees_count, capacity_held FROM reservations WHERE availability_id = ?",
-      args: [params.id],
-    });
-    if (reservations.rows.length === 0) {
-      return NextResponse.json({ error: "No hay reservas para mover en esta fecha." }, { status: 400 });
-    }
-
-    const heldCount = reservations.rows.reduce((sum, reservation) => {
-      if (Number(reservation.capacity_held) !== 1) return sum;
-      return sum + (Number(reservation.attendees_count) || 1);
-    }, 0);
-    const targetBooked = Number(target.booked) || 0;
-    const targetCapacity = Number(target.capacity) || 0;
-
-    if (targetBooked + heldCount > targetCapacity) {
-      return NextResponse.json(
-        { error: `La nueva fecha no tiene cupo suficiente. Necesita ${heldCount} lugar(es) libres.` },
-        { status: 409 }
-      );
-    }
-
-    await db.batch([
-      {
-        sql: "UPDATE reservations SET availability_id = ?, updated_at = datetime('now') WHERE availability_id = ?",
-        args: [targetAvailabilityId, params.id],
-      },
-      {
-        sql: "UPDATE availability SET booked = MAX(booked - ?, 0) WHERE id = ?",
-        args: [heldCount, params.id],
-      },
-      {
-        sql: "UPDATE availability SET booked = booked + ? WHERE id = ?",
-        args: [heldCount, targetAvailabilityId],
-      },
-    ]);
-
-    return NextResponse.json({ ok: true, moved: reservations.rows.length, heldCount });
+    return NextResponse.json({ ok: true, ...result, notifications, notificationError });
   } catch (error) {
-    console.error("[POST /api/admin/availability/:id/move-reservations]", error);
+    if (error instanceof RescheduleError) return NextResponse.json({ error: error.message }, { status: error.status });
+    console.error("[move reservations]", error);
     return NextResponse.json({ error: "Error al mover las reservas." }, { status: 500 });
   }
 }

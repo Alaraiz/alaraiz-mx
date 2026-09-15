@@ -1,4 +1,4 @@
-export type EmailTemplateKey = "reservation_confirmation" | "exit_survey";
+export type EmailTemplateKey = "reservation_confirmation" | "exit_survey" | "reservation_rescheduled";
 
 export type EmailTemplateDefault = {
   key: EmailTemplateKey;
@@ -15,6 +15,8 @@ export const EMAIL_TEMPLATE_VARIABLES = [
   ["{{experiencia}}", "Nombre de la experiencia"],
   ["{{fecha}}", "Fecha de la salida"],
   ["{{hora}}", "Hora de inicio"],
+  ["{{fecha_anterior}}", "Fecha anterior (cambio de fecha)"],
+  ["{{hora_anterior}}", "Hora anterior (cambio de fecha)"],
   ["{{personas}}", "Número de asistentes"],
   ["{{total}}", "Total pagado"],
   ["{{descuento}}", "Monto descontado"],
@@ -56,6 +58,33 @@ Ya nos queremos ver,
 El equipo de re·creo`,
     cta_label: "Ver confirmación",
     footer: "Raíz · La ciudad debajo de la ciudad\nCiudad de México · Este correo se generó automáticamente para tu reserva.",
+  },
+  reservation_rescheduled: {
+    key: "reservation_rescheduled",
+    label: "Cambio de fecha",
+    subject: "Nueva fecha para {{experiencia}}",
+    title: "Tu experiencia tiene una nueva fecha",
+    body: `Hola, {{nombre}}.
+
+Reagendamos tu reserva para {{experiencia}}.
+
+Fecha anterior: {{fecha_anterior}} a las {{hora_anterior}}
+Nueva fecha: {{fecha}} a las {{hora}}
+Horarios de Ciudad de México.
+
+Personas: {{personas}}
+Punto de encuentro: {{punto_encuentro}}
+Qué esperar: {{que_esperar}}
+
+Este cambio no genera un nuevo cobro ni modifica el estado de tu pago. Puedes consultar los datos de tu reserva aquí:
+{{link_confirmacion}}
+
+Si ya guardaste la salida en tu calendario, actualiza la fecha. Si necesitas ayuda con este cambio, contacta al equipo de Raíz.
+
+Nos vemos pronto,
+El equipo de re·creo`,
+    cta_label: "Consultar mi reserva",
+    footer: "Raíz · La ciudad debajo de la ciudad\nCiudad de México · Aviso de cambio de fecha.",
   },
   exit_survey: {
     key: "exit_survey",
