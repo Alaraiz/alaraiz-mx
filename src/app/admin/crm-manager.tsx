@@ -46,6 +46,7 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   const [saving, setSaving] = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [sendingSurveyId, setSendingSurveyId] = useState<string | null>(null);
+  const [reconcilingPaymentId, setReconcilingPaymentId] = useState<string | null>(null);
 
   const sourceOptions = useMemo(() => {
     const values = new Set(data.customers.map((customer) => text(customer.source)).filter(Boolean));
@@ -235,23 +236,17 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   async function sendExitSurvey(reservation: Row) {
     const reservationId = text(reservation.id);
     const customerEmail = text(reservation.email || selected?.email);
-    const confirmLatePayment = text(reservation.payment_status) !== "paid";
     if (!reservationId) return;
     if (!customerEmail) {
       notify("Esta reserva no tiene correo de cliente.");
       return;
     }
-    const confirmation = confirmLatePayment
-      ? `Esta reserva aparece como no pagada. ¿Ya verificaste el cobro en Clip?\n\nAl continuar se registrará como pagada y se enviará la encuesta a ${customerEmail}.`
-      : `¿Enviar encuesta de salida a ${customerEmail}?`;
-    if (!window.confirm(confirmation)) return;
+    if (!window.confirm(`¿Enviar encuesta de salida a ${customerEmail}?`)) return;
 
     setSendingSurveyId(reservationId);
     try {
       const res = await fetch(`/api/admin/reservations/${reservationId}/exit-survey-email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmLatePayment }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo enviar el cuestionario.");
@@ -260,6 +255,27 @@ export default function CrmManager({ data, refresh, notify }: Props) {
       notify(err instanceof Error ? err.message : "No se pudo enviar el cuestionario.");
     } finally {
       setSendingSurveyId(null);
+    }
+  }
+
+  async function reconcilePayment(reservation: Row) {
+    const reservationId = text(reservation.id);
+    if (!reservationId) return;
+    if (!window.confirm("¿Ya verificaste que este cobro fue recibido en Clip?\n\nEsto registrará la reserva como pagada. No se enviará ningún correo.")) return;
+
+    setReconcilingPaymentId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/reconcile-payment`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo registrar el pago.");
+      notify("Pago recibido registrado. No se envió ningún correo.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo registrar el pago.");
+    } finally {
+      setReconcilingPaymentId(null);
     }
   }
 
@@ -494,6 +510,16 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                     </div>
                   )}
                   <div className="admin-reservation-actions">
+                    {text(r.payment_status) !== "paid" && (
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={reconcilingPaymentId === text(r.id)}
+                        onClick={() => reconcilePayment(r)}
+                      >
+                        {reconcilingPaymentId === text(r.id) ? "Registrando pago..." : "Registrar pago recibido"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="admin-btn"
@@ -505,15 +531,11 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                     <button
                       type="button"
                       className="admin-btn"
-                      disabled={sendingSurveyId === text(r.id) || !isPastDate(text(r.date))}
+                      disabled={sendingSurveyId === text(r.id) || text(r.payment_status) !== "paid" || !isPastDate(text(r.date))}
                       onClick={() => sendExitSurvey(r)}
-                      title={!isPastDate(text(r.date)) ? "Disponible después de la salida" : "Enviar encuesta de salida"}
+                      title={text(r.payment_status) !== "paid" ? "Primero registra el pago" : !isPastDate(text(r.date)) ? "Disponible después de la salida" : "Enviar encuesta de salida"}
                     >
-                      {sendingSurveyId === text(r.id)
-                        ? "Enviando encuesta..."
-                        : text(r.payment_status) === "paid"
-                          ? "Enviar encuesta de salida"
-                          : "Registrar pago y enviar encuesta"}
+                      {sendingSurveyId === text(r.id) ? "Enviando encuesta..." : "Enviar encuesta de salida"}
                     </button>
                     <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
                       Eliminar solo esta reserva y liberar cupos

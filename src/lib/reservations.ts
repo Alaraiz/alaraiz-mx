@@ -102,6 +102,9 @@ export async function sendExitSurveyEmail(referenceOrReservationId: string) {
   if (!reservation?.email) {
     return { ok: false, skipped: true, error: "Reserva sin correo de cliente." };
   }
+  if (reservation.payment_status !== "paid") {
+    return { ok: false, error: "Primero registra el pago recibido antes de enviar el cuestionario." };
+  }
   if (!reservation.date || String(reservation.date) >= getMexicoDateKey()) {
     return { ok: false, error: "El cuestionario se puede enviar después de que pase la fecha de la experiencia." };
   }

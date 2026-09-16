@@ -478,6 +478,7 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
   }
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [sendingSurveyId, setSendingSurveyId] = useState<string | null>(null);
+  const [reconcilingPaymentId, setReconcilingPaymentId] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -656,23 +657,17 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
   async function sendExitSurvey(reservation: Row) {
     const reservationId = String(reservation.id || "");
     const customerEmail = String(reservation.email || "");
-    const confirmLatePayment = String(reservation.payment_status) !== "paid";
     if (!reservationId) return;
     if (!customerEmail) {
       notify("Esta reserva no tiene correo de cliente.");
       return;
     }
-    const confirmation = confirmLatePayment
-      ? `Esta reserva aparece como no pagada. ¿Ya verificaste el cobro en Clip?\n\nAl continuar se registrará como pagada y se enviará la encuesta a ${customerEmail}.`
-      : `¿Enviar encuesta de salida a ${customerEmail}?`;
-    if (!window.confirm(confirmation)) return;
+    if (!window.confirm(`¿Enviar encuesta de salida a ${customerEmail}?`)) return;
 
     setSendingSurveyId(reservationId);
     try {
       const res = await fetch(`/api/admin/reservations/${reservationId}/exit-survey-email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmLatePayment }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo enviar el cuestionario.");
@@ -681,6 +676,27 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
       notify(err instanceof Error ? err.message : "No se pudo enviar el cuestionario.");
     } finally {
       setSendingSurveyId(null);
+    }
+  }
+
+  async function reconcilePayment(reservation: Row) {
+    const reservationId = String(reservation.id || "");
+    if (!reservationId) return;
+    if (!window.confirm("¿Ya verificaste que este cobro fue recibido en Clip?\n\nEsto registrará la reserva como pagada. No se enviará ningún correo.")) return;
+
+    setReconcilingPaymentId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/reconcile-payment`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "No se pudo registrar el pago.");
+      notify("Pago recibido registrado. No se envió ningún correo.");
+      refresh();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo registrar el pago.");
+    } finally {
+      setReconcilingPaymentId(null);
     }
   }
 
@@ -975,6 +991,20 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                               {String(r.payment_status)}
                             </span>
                             <span>·</span>
+                            {String(r.payment_status) !== "paid" && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="admin-link-button admin-link-button--neutral"
+                                  disabled={reconcilingPaymentId === String(r.id)}
+                                  onClick={() => reconcilePayment(r)}
+                                  title="Registrar un cobro ya verificado en Clip"
+                                >
+                                  {reconcilingPaymentId === String(r.id) ? "Registrando pago..." : "Registrar pago recibido"}
+                                </button>
+                                <span>·</span>
+                              </>
+                            )}
                             <button
                               type="button"
                               className="admin-link-button"
@@ -988,19 +1018,17 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                             <button
                               type="button"
                               className="admin-link-button admin-link-button--neutral"
-                              disabled={sendingSurveyId === String(r.id) || String(slot.date) >= today}
+                              disabled={sendingSurveyId === String(r.id) || String(r.payment_status) !== "paid" || String(slot.date) >= today}
                               onClick={() => sendExitSurvey(r)}
                               title={
-                                String(slot.date) >= today
+                                String(r.payment_status) !== "paid"
+                                  ? "Primero registra el pago"
+                                  : String(slot.date) >= today
                                   ? "La encuesta se envía después de la salida"
                                   : `Enviar cuestionario a ${String(r.email || "esta persona")}`
                               }
                             >
-                              {sendingSurveyId === String(r.id)
-                                ? "Enviando..."
-                                : String(r.payment_status) === "paid"
-                                  ? "Enviar encuesta"
-                                  : "Registrar pago y enviar encuesta"}
+                              {sendingSurveyId === String(r.id) ? "Enviando..." : "Enviar encuesta"}
                             </button>
                             <span>·</span>
                             <button
@@ -1117,6 +1145,16 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                       </div>
                     )}
                     <div className="admin-reservation-actions">
+                      {String(reservation.payment_status) !== "paid" && (
+                        <button
+                          type="button"
+                          className="admin-btn"
+                          disabled={reconcilingPaymentId === String(reservation.id)}
+                          onClick={() => reconcilePayment(reservation)}
+                        >
+                          {reconcilingPaymentId === String(reservation.id) ? "Registrando pago..." : "Registrar pago recibido"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="admin-btn"
@@ -1128,15 +1166,11 @@ function Calendar({ data, role, refresh, notify }: { data: Data; role: string; r
                       <button
                         type="button"
                         className="admin-btn"
-                        disabled={sendingSurveyId === String(reservation.id) || String(selectedSlot.date) >= today}
+                        disabled={sendingSurveyId === String(reservation.id) || String(reservation.payment_status) !== "paid" || String(selectedSlot.date) >= today}
                         onClick={() => sendExitSurvey(reservation)}
-                        title={String(selectedSlot.date) >= today ? "Disponible después de la salida" : "Enviar encuesta de salida"}
+                        title={String(reservation.payment_status) !== "paid" ? "Primero registra el pago" : String(selectedSlot.date) >= today ? "Disponible después de la salida" : "Enviar encuesta de salida"}
                       >
-                        {sendingSurveyId === String(reservation.id)
-                          ? "Enviando encuesta..."
-                          : String(reservation.payment_status) === "paid"
-                            ? "Enviar encuesta de salida"
-                            : "Registrar pago y enviar encuesta"}
+                        {sendingSurveyId === String(reservation.id) ? "Enviando encuesta..." : "Enviar encuesta de salida"}
                       </button>
                       <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(reservation)}>
                         Quitar esta reserva y liberar cupos
