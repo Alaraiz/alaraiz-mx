@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       if (!confirmation.ok && confirmation.status !== 404) {
         return NextResponse.json({ error: confirmation.error }, { status: confirmation.status });
       }
-    } else {
+    } else if (result.status === "failed") {
       await markPaymentFailed(result.reference);
     }
 

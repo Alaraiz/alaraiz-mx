@@ -144,7 +144,7 @@ export class ClipGateway implements PaymentGateway {
     const event = JSON.parse(payload) as ClipPaymentResponse;
     return {
       reference: event.id || event.external_reference || "",
-      status: normalizeClipStatus(event.status) === "paid" ? "paid" : "failed",
+      status: normalizeClipStatus(event.status),
     };
   }
 }

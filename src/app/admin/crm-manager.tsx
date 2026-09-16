@@ -235,17 +235,23 @@ export default function CrmManager({ data, refresh, notify }: Props) {
   async function sendExitSurvey(reservation: Row) {
     const reservationId = text(reservation.id);
     const customerEmail = text(reservation.email || selected?.email);
+    const confirmLatePayment = text(reservation.payment_status) !== "paid";
     if (!reservationId) return;
     if (!customerEmail) {
       notify("Esta reserva no tiene correo de cliente.");
       return;
     }
-    if (!window.confirm(`¿Enviar encuesta de salida a ${customerEmail}?`)) return;
+    const confirmation = confirmLatePayment
+      ? `Esta reserva aparece como no pagada. ¿Ya verificaste el cobro en Clip?\n\nAl continuar se registrará como pagada y se enviará la encuesta a ${customerEmail}.`
+      : `¿Enviar encuesta de salida a ${customerEmail}?`;
+    if (!window.confirm(confirmation)) return;
 
     setSendingSurveyId(reservationId);
     try {
       const res = await fetch(`/api/admin/reservations/${reservationId}/exit-survey-email`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmLatePayment }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo enviar el cuestionario.");
@@ -503,7 +509,11 @@ export default function CrmManager({ data, refresh, notify }: Props) {
                       onClick={() => sendExitSurvey(r)}
                       title={!isPastDate(text(r.date)) ? "Disponible después de la salida" : "Enviar encuesta de salida"}
                     >
-                      {sendingSurveyId === text(r.id) ? "Enviando encuesta..." : "Enviar encuesta de salida"}
+                      {sendingSurveyId === text(r.id)
+                        ? "Enviando encuesta..."
+                        : text(r.payment_status) === "paid"
+                          ? "Enviar encuesta de salida"
+                          : "Registrar pago y enviar encuesta"}
                     </button>
                     <button type="button" className="admin-btn-danger" onClick={() => deleteReservation(r)}>
                       Eliminar solo esta reserva y liberar cupos

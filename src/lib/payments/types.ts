@@ -27,8 +27,8 @@ export interface CheckoutResult {
 export interface WebhookResult {
   /** The payment reference that was completed/failed */
   reference: string;
-  /** Final status of the payment */
-  status: "paid" | "failed";
+  /** Current status of the payment */
+  status: "paid" | "pending" | "failed";
 }
 
 export interface PaymentGateway {

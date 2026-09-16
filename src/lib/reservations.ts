@@ -130,6 +130,36 @@ export async function sendExitSurveyEmail(referenceOrReservationId: string) {
   });
 }
 
+export async function reconcileLatePayment(reservationId: string) {
+  const reservation = await getReservationByPaymentReference(reservationId);
+  if (!reservation) {
+    return { ok: false, error: "Reserva no encontrada." };
+  }
+
+  if (reservation.payment_status === "paid") {
+    return { ok: true };
+  }
+
+  await db.execute({
+    sql: `UPDATE reservations
+          SET payment_status = 'paid',
+              payment_method = CASE
+                WHEN payment_method IS NULL OR payment_method IN ('pending', 'manual') THEN 'clip'
+                ELSE payment_method
+              END,
+              status = CASE
+                WHEN status IN ('pending', 'cancelled', 'failed') THEN 'confirmed'
+                ELSE status
+              END,
+              notes = trim(COALESCE(notes || char(10), '') || 'Pago tardío verificado manualmente en Clip.'),
+              updated_at = datetime('now')
+          WHERE id = ?`,
+    args: [reservation.id],
+  });
+
+  return { ok: true };
+}
+
 export async function markPaymentFailed(reference: string) {
   const reservation = await getReservationByPaymentReference(reference);
   if (reservation?.capacity_held && reservation.availability_id) {

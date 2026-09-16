@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { adminEmail } from "@/lib/auth";
 import { ensureMigrated } from "@/lib/db";
-import { sendExitSurveyEmail } from "@/lib/reservations";
+import { reconcileLatePayment, sendExitSurveyEmail } from "@/lib/reservations";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   const email = await adminEmail();
@@ -16,6 +16,13 @@ export async function POST(
 
   try {
     await ensureMigrated();
+    const body = await request.json().catch(() => ({}));
+    if (body.confirmLatePayment === true) {
+      const reconciliation = await reconcileLatePayment(params.id);
+      if (!reconciliation.ok) {
+        return NextResponse.json({ error: reconciliation.error }, { status: 404 });
+      }
+    }
     const result = await sendExitSurveyEmail(params.id);
 
     if (result.skipped) {
