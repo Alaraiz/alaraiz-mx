@@ -213,7 +213,7 @@ export default function AdminDashboard() {
             {tab === "crm" && (
               <CrmManager data={data} refresh={refresh} notify={notify} />
             )}
-            {tab === "payments" && <Payments data={data} />}
+            {tab === "payments" && <Payments data={data} refresh={refresh} notify={notify} />}
             {tab === "settings" && <Settings notify={notify} role={role} data={data} />}
           </>
         )}
@@ -1196,11 +1196,33 @@ function formatCalDate(d: string): string {
   }
 }
 
-function Payments({ data }: { data: Data }) {
+function Payments({ data, refresh, notify }: { data: Data; refresh: () => void; notify: Notify }) {
+  const [reconcilingPaymentId, setReconcilingPaymentId] = useState<string | null>(null);
   const paid = data.reservations.filter((r) => r.payment_status === "paid");
   const pending = data.reservations.filter((r) => r.payment_status === "unpaid" || r.payment_status === "pending");
   const totalRevenue = paid.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const totalDiscounts = data.reservations.reduce((sum, r) => sum + (Number(r.discount_amount) || 0), 0);
+
+  async function reconcilePayment(reservation: Row) {
+    const reservationId = String(reservation.id || "");
+    if (!reservationId) return;
+    if (!window.confirm("¿Ya verificaste que este cobro fue recibido en Clip?\n\nEsto registrará la reserva como pagada. No se enviará ningún correo.")) return;
+
+    setReconcilingPaymentId(reservationId);
+    try {
+      const res = await fetch(`/api/admin/reservations/${reservationId}/reconcile-payment`, {
+        method: "POST",
+      });
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseData.error || "No se pudo registrar el pago.");
+      notify("Pago recibido registrado. No se envió ningún correo.");
+      refresh();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "No se pudo registrar el pago.", "error");
+    } finally {
+      setReconcilingPaymentId(null);
+    }
+  }
 
   return (
     <>
@@ -1255,6 +1277,16 @@ function Payments({ data }: { data: Data }) {
               <span className={`admin-badge ${r.payment_status === "paid" ? "success" : "warning"}`}>
                 {String(r.payment_status)}
               </span>
+              {r.payment_status !== "paid" && (
+                <button
+                  type="button"
+                  className="admin-btn admin-small"
+                  disabled={reconcilingPaymentId === String(r.id)}
+                  onClick={() => reconcilePayment(r)}
+                >
+                  {reconcilingPaymentId === String(r.id) ? "Registrando..." : "Registrar pago recibido"}
+                </button>
+              )}
             </div>
           ))}
         </div>
